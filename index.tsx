@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { XR, ARButton, useXR, createXRStore } from '@react-three/xr';
+import { XR, ARButton, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { Physics, useBox, usePlane, useSphere } from '@react-three/cannon';
 import { Text, Html, TorusKnot, Icosahedron, Box, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
@@ -28,116 +28,11 @@ const MOCK_FILES: FileData[] = [
   { id: '7', name: 'sculpture_v2.glb', type: 'model', color: '#C2F9BB', scale: [0.7, 0.7, 0.7] },
 ];
 
-// --- Store ---
-const store = createXRStore({ hitTest: true });
-
 // --- Utilities ---
-
-// Helper hook to replace removed useHitTest
-const useHitTest = (callback: (matrix: THREE.Matrix4) => void) => {
-  const { gl } = useThree();
-  const session = useXR((state) => state.session);
-  const hitTestSource = useRef<XRHitTestSource | null>(null);
-
-  useEffect(() => {
-    if (!session) {
-      hitTestSource.current = null;
-      return;
-    }
-    
-    const requestHitTestSource = async () => {
-      try {
-        const space = await session.requestReferenceSpace('viewer');
-        const source = await session.requestHitTestSource({ space });
-        hitTestSource.current = source;
-      } catch (e) {
-        console.error('Hit test request failed', e);
-      }
-    };
-    
-    requestHitTestSource();
-    
-    return () => {
-      hitTestSource.current?.cancel();
-      hitTestSource.current = null;
-    };
-  }, [session]);
-
-  useFrame((state, delta, frame) => {
-    if (hitTestSource.current && frame) {
-      const results = frame.getHitTestResults(hitTestSource.current);
-      if (results.length > 0) {
-        const referenceSpace = gl.xr.getReferenceSpace();
-        if (referenceSpace) {
-          const pose = results[0].getPose(referenceSpace);
-          if (pose) {
-            const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
-            callback(matrix);
-          }
-        }
-      }
-    }
-  });
-};
-
-// Helper hook to access controllers like in older @react-three/xr versions
-const useXRControllers = () => {
-  const { gl } = useThree();
-  const [controllers, setControllers] = useState<any[]>([]);
-
-  useEffect(() => {
-    const list: any[] = [];
-    const update = () => setControllers([...list]);
-
-    const onConnected = (e: any) => {
-      // Identify controller index
-      let index = -1;
-      if (e.target === gl.xr.getController(0)) index = 0;
-      else if (e.target === gl.xr.getController(1)) index = 1;
-
-      if (index !== -1) {
-        const controller = gl.xr.getController(index);
-        const grip = gl.xr.getControllerGrip(index);
-        
-        // Remove duplicate if exists (reconnection)
-        const existingIdx = list.findIndex(c => c.controller === controller);
-        if (existingIdx !== -1) list.splice(existingIdx, 1);
-
-        list.push({ controller, grip, inputSource: e.data });
-        update();
-      }
-    };
-    
-    const onDisconnected = (e: any) => {
-       const idx = list.findIndex(c => c.controller === e.target);
-       if (idx !== -1) {
-         list.splice(idx, 1);
-         update();
-       }
-    };
-
-    const c0 = gl.xr.getController(0);
-    const c1 = gl.xr.getController(1);
-
-    c0.addEventListener('connected', onConnected);
-    c0.addEventListener('disconnected', onDisconnected);
-    c1.addEventListener('connected', onConnected);
-    c1.addEventListener('disconnected', onDisconnected);
-
-    return () => {
-      c0.removeEventListener('connected', onConnected);
-      c0.removeEventListener('disconnected', onDisconnected);
-      c1.removeEventListener('connected', onConnected);
-      c1.removeEventListener('disconnected', onDisconnected);
-    };
-  }, [gl]);
-
-  return controllers;
-};
 
 function useGeneratedTexture(text: string, color: string) {
   return useMemo(() => {
-    // Fix: Use window.document to avoid 'Cannot find name document' error
+    // Access document directly via window
     const canvas = window.document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
@@ -167,7 +62,7 @@ const DesktopBoundaries = ({ width = 1.5, depth = 1.0 }) => {
   return null;
 };
 
-const FileObject = ({ file, position }: { file: FileData; position: [number, number, number] }) => {
+const FileObject: React.FC<{ file: FileData; position: [number, number, number] }> = ({ file, position }) => {
   const [ref, api] = useBox(() => ({
     mass: 1,
     position,
@@ -178,10 +73,8 @@ const FileObject = ({ file, position }: { file: FileData; position: [number, num
 
   const texture = useGeneratedTexture(file.type, file.color);
   const [hovered, setHover] = useState(false);
-  const [grabbingController, setGrabbingController] = useState<any>(null);
+  const [activeController, setActiveController] = useState<any>(null);
   
-  // Fix: Use custom hook for controllers
-  const controllers = useXRControllers();
   const meshRef = useRef<THREE.Group>(null);
 
   useFrame((state, delta) => {
@@ -191,107 +84,99 @@ const FileObject = ({ file, position }: { file: FileData; position: [number, num
       meshRef.current.rotation.x += delta * 0.2;
     }
 
-    // Drag Logic
-    if (grabbingController) {
-      const controller = grabbingController;
-      
-      // Check if still pressing (gamepad button 0)
-      const isPressed = controller.inputSource?.gamepad?.buttons[0]?.pressed;
-      
-      if (isPressed) {
-        const controllerPos = new THREE.Vector3();
-        const controllerRot = new THREE.Quaternion();
-        
-        // Use grip space (position of hand)
-        controller.grip.getWorldPosition(controllerPos);
-        controller.grip.getWorldQuaternion(controllerRot);
+    // Drag Logic using standard spring physics towards controller
+    if (activeController) {
+       // In XR v5, the event target is the controller object (Group)
+       const controller = activeController;
+       
+       const controllerPos = new THREE.Vector3();
+       const controllerRot = new THREE.Quaternion();
+       
+       controller.getWorldPosition(controllerPos);
+       controller.getWorldQuaternion(controllerRot);
 
-        const currentPos = new THREE.Vector3();
-        ref.current!.getWorldPosition(currentPos);
+       const currentPos = new THREE.Vector3();
+       ref.current!.getWorldPosition(currentPos);
 
-        // Spring force
-        const direction = controllerPos.clone().sub(currentPos);
-        const dist = direction.length();
-        const targetVel = direction.normalize().multiplyScalar(dist * 12); // Speed
-        
-        api.velocity.set(targetVel.x, targetVel.y, targetVel.z);
-        api.rotation.set(controllerRot.x, controllerRot.y, controllerRot.z);
-      } else {
-        // Released
-        setGrabbingController(null);
-      }
+       const direction = controllerPos.clone().sub(currentPos);
+       const dist = direction.length();
+       const targetVel = direction.normalize().multiplyScalar(dist * 12);
+       
+       api.velocity.set(targetVel.x, targetVel.y, targetVel.z);
+       // Optional: Match rotation
+       // api.rotation.set(controllerRot.x, controllerRot.y, controllerRot.z);
     }
   });
 
-  const handlePointerDown = (e: any) => {
-    e.stopPropagation();
-    // Wake physics
+  const onSelectStart = (e: any) => {
+    setActiveController(e.target);
     api.wakeUp();
+  };
 
-    // Find which controller triggered this
-    const activeController = controllers.find(c => c.inputSource?.gamepad?.buttons[0]?.pressed);
-    
-    if (activeController) {
-      setGrabbingController(activeController);
+  const onSelectEnd = (e: any) => {
+    if (e.target === activeController) {
+      setActiveController(null);
     }
   };
 
   return (
-    <group 
-      ref={ref} 
-      onPointerDown={handlePointerDown}
-      onPointerOver={() => setHover(true)}
-      onPointerOut={() => setHover(false)}
+    <Interactive
+      onSelectStart={onSelectStart}
+      onSelectEnd={onSelectEnd}
+      onHover={() => setHover(true)}
+      onBlur={() => setHover(false)}
     >
-      {/* Selection Highlight */}
-      {hovered && (
-         <mesh>
-           <boxGeometry args={[file.scale[0] + 0.05, file.scale[1] + 0.05, file.scale[2] + 0.05]} />
-           <meshBasicMaterial color="white" wireframe />
-         </mesh>
-      )}
-
-      {/* Visuals */}
-      <group ref={meshRef}>
-        {file.type === 'model' ? (
-          <group>
-             <Icosahedron args={[0.3, 0]} castShadow>
-                <meshStandardMaterial color={file.color} roughness={0.2} metalness={0.8} />
-             </Icosahedron>
-             <TorusKnot args={[0.2, 0.05, 64, 8]} position={[0,0,0]} castShadow>
-                <meshStandardMaterial color="white" />
-             </TorusKnot>
-          </group>
-        ) : file.type === 'video' ? (
-           <RoundedBox args={[file.scale[0], file.scale[1], file.scale[2]]} radius={0.05} castShadow>
-             <meshStandardMaterial color="#222" />
-             <mesh position={[0,0,file.scale[2]/2 + 0.001]}>
-                <planeGeometry args={[file.scale[0]*0.9, file.scale[1]*0.9]} />
-                <meshBasicMaterial color="black" />
-             </mesh>
-             <Text position={[0,0,file.scale[2]/2 + 0.01]} fontSize={0.2} color="white">▶ PLAY</Text>
-           </RoundedBox>
-        ) : (
-          <Box args={[file.scale[0], file.scale[1], file.scale[2]]} castShadow>
-            <meshStandardMaterial map={texture} />
-          </Box>
+      <group ref={ref}>
+        {/* Selection Highlight */}
+        {hovered && (
+           <mesh>
+             <boxGeometry args={[file.scale[0] + 0.05, file.scale[1] + 0.05, file.scale[2] + 0.05]} />
+             <meshBasicMaterial color="white" wireframe />
+           </mesh>
         )}
-      </group>
 
-      {/* Label */}
-      <group position={[0, file.scale[1] / 2 + 0.2, 0]}>
-        <Text
-          fontSize={0.1}
-          color="white"
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.01}
-          outlineColor="#000000"
-        >
-          {file.name}
-        </Text>
+        {/* Visuals */}
+        <group ref={meshRef}>
+          {file.type === 'model' ? (
+            <group>
+               <Icosahedron args={[0.3, 0]} castShadow>
+                  <meshStandardMaterial color={file.color} roughness={0.2} metalness={0.8} />
+               </Icosahedron>
+               <TorusKnot args={[0.2, 0.05, 64, 8]} position={[0,0,0]} castShadow>
+                  <meshStandardMaterial color="white" />
+               </TorusKnot>
+            </group>
+          ) : file.type === 'video' ? (
+             <RoundedBox args={[file.scale[0], file.scale[1], file.scale[2]]} radius={0.05} castShadow>
+               <meshStandardMaterial color="#222" />
+               <mesh position={[0,0,file.scale[2]/2 + 0.001]}>
+                  <planeGeometry args={[file.scale[0]*0.9, file.scale[1]*0.9]} />
+                  <meshBasicMaterial color="black" />
+               </mesh>
+               <Text position={[0,0,file.scale[2]/2 + 0.01]} fontSize={0.2} color="white">▶ PLAY</Text>
+             </RoundedBox>
+          ) : (
+            <Box args={[file.scale[0], file.scale[1], file.scale[2]]} castShadow>
+              <meshStandardMaterial map={texture} />
+            </Box>
+          )}
+        </group>
+
+        {/* Label */}
+        <group position={[0, file.scale[1] / 2 + 0.2, 0]}>
+          <Text
+            fontSize={0.1}
+            color="white"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.01}
+            outlineColor="#000000"
+          >
+            {file.name}
+          </Text>
+        </group>
       </group>
-    </group>
+    </Interactive>
   );
 };
 
@@ -324,8 +209,8 @@ const ARScene = () => {
   const [deskPosition, setDeskPosition] = useState<THREE.Vector3 | null>(null);
   const hitTestRef = useRef<THREE.Group>(null);
   
-  // Fix: Use custom hit test hook
-  useHitTest((hitMatrix: THREE.Matrix4) => {
+  // Use v5 useHitTest
+  useHitTest((hitMatrix) => {
     if (!deskPosition && hitTestRef.current) {
       hitTestRef.current.visible = true;
       hitMatrix.decompose(
@@ -336,20 +221,18 @@ const ARScene = () => {
     }
   });
 
-  // Fix: Use custom hook for controllers
-  const controllers = useXRControllers();
+  const { controllers } = useXR();
 
-  // Manual select listener for desk placement
   useEffect(() => {
+    // Manual listener for placing desk
     const onSelect = () => {
-      if (!deskPosition && hitTestRef.current && hitTestRef.current.visible) {
+       if (!deskPosition && hitTestRef.current && hitTestRef.current.visible) {
         const pos = new THREE.Vector3();
         hitTestRef.current.getWorldPosition(pos);
         setDeskPosition(pos);
       }
     };
-    
-    // Attach listener to all available controllers
+
     controllers.forEach(c => c.controller.addEventListener('select', onSelect));
     return () => controllers.forEach(c => c.controller.removeEventListener('select', onSelect));
   }, [controllers, deskPosition]);
@@ -400,9 +283,9 @@ const ARScene = () => {
 const App = () => {
   return (
     <>
-      <ARButton store={store} />
+      <ARButton sessionInit={{ requiredFeatures: ['hit-test'] }} />
       <Canvas shadows>
-        <XR store={store}>
+        <XR>
           <ARScene />
         </XR>
       </Canvas>
@@ -429,6 +312,5 @@ const App = () => {
   );
 };
 
-// Fix: Use window.document to avoid 'Cannot find name document' error
 const root = createRoot(window.document.getElementById('root')!);
 root.render(<App />);
