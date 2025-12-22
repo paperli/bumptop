@@ -21,18 +21,8 @@ export function TestCube() {
   const handleClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation()
 
-    if (rigidBodyRef.current) {
-      // Apply a smaller impulse to throw the cube (reduced to stay within walls)
-      const impulse = {
-        x: (Math.random() - 0.5) * 0.5, // Reduced from 2 to 0.5
-        y: Math.random() * 0.3 + 0.2, // Reduced from 3+1 to 0.3+0.2
-        z: (Math.random() - 0.5) * 0.5, // Reduced from 2 to 0.5
-      }
-
-      rigidBodyRef.current.applyImpulse(impulse, true)
-
-      console.log('TestCube thrown with impulse:', impulse)
-    }
+    // Just log the click for now - drag/throw behavior will be implemented in Phase 3
+    console.log('TestCube clicked')
   }
 
   return (
