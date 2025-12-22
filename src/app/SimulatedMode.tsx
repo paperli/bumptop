@@ -62,6 +62,11 @@ export function SimulatedMode() {
         minDistance={0.5}
         maxDistance={5}
         maxPolarAngle={Math.PI / 2}
+        mouseButtons={{
+          LEFT: 2, // RIGHT mouse button for rotate (was LEFT)
+          MIDDLE: 1, // MIDDLE for pan
+          RIGHT: 0, // LEFT for nothing (frees it up for clicking objects)
+        }}
       />
 
       {/* Fog for depth */}

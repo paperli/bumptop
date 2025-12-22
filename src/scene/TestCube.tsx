@@ -22,11 +22,11 @@ export function TestCube() {
     event.stopPropagation()
 
     if (rigidBodyRef.current) {
-      // Apply a random impulse to throw the cube
+      // Apply a smaller impulse to throw the cube (reduced to stay within walls)
       const impulse = {
-        x: (Math.random() - 0.5) * 2,
-        y: Math.random() * 3 + 1,
-        z: (Math.random() - 0.5) * 2,
+        x: (Math.random() - 0.5) * 0.5, // Reduced from 2 to 0.5
+        y: Math.random() * 0.3 + 0.2, // Reduced from 3+1 to 0.3+0.2
+        z: (Math.random() - 0.5) * 0.5, // Reduced from 2 to 0.5
       }
 
       rigidBodyRef.current.applyImpulse(impulse, true)

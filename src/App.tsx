@@ -7,6 +7,7 @@ import { ModeDetector } from './app/ModeDetector'
 import { ModeLabel } from './app/ModeLabel'
 import { ARModeButton } from './app/ARModeButton'
 import { Settings } from './app/Settings'
+import { ControlsHint } from './app/ControlsHint'
 import { SimulatedMode } from './app/SimulatedMode'
 import { useAppStore } from './store/appStore'
 import './App.css'
@@ -23,6 +24,7 @@ function App() {
       <ModeLabel />
       <ARModeButton />
       <Settings />
+      <ControlsHint />
 
       {/* 3D Scene */}
       {mode === 'simulated' && <SimulatedMode />}
