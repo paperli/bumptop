@@ -36,11 +36,11 @@ export class MockProvider implements FileSystemProvider {
       'mock-vid-5': '/mock-assets/videos/sample-5.mp4',
 
       // Audio - map to actual audio files in public/mock-assets/audio/
-      'mock-aud-1': '/mock-assets/audio/sample-1.mp3',
+      'mock-aud-1': '/mock-assets/audio/sample-1.wav',
       'mock-aud-2': '/mock-assets/audio/sample-2.mp3',
-      'mock-aud-3': '/mock-assets/audio/sample-3.mp3',
-      'mock-aud-4': '/mock-assets/audio/sample-4.mp3',
-      'mock-aud-5': '/mock-assets/audio/sample-5.mp3',
+      'mock-aud-3': '/mock-assets/audio/sample-3.wav',
+      'mock-aud-4': '/mock-assets/audio/sample-4.wav',
+      'mock-aud-5': '/mock-assets/audio/sample-5.wav',
 
       // Text - map to actual text files in public/mock-assets/text/
       'mock-txt-1': '/mock-assets/text/sample.txt',
