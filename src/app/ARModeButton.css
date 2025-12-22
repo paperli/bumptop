@@ -1,0 +1,28 @@
+.ar-mode-button {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+
+  padding: 16px 32px;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+}
+
+.ar-mode-button:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 30px rgba(102, 126, 234, 0.6);
+}
+
+.ar-mode-button:active {
+  transform: translateX(-50%) translateY(0);
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+}
