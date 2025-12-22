@@ -13,8 +13,6 @@ import { useFileStore } from '../store/fileStore'
 
 export interface UseGesturesOptions {
   rigidBodyRef: React.RefObject<RapierRigidBody>
-  onSelect?: () => void
-  onDeselect?: () => void
   onDoubleClick?: () => void
   minThrowSpeed?: number
   maxThrowSpeed?: number
@@ -23,8 +21,6 @@ export interface UseGesturesOptions {
 export function useGestures(options: UseGesturesOptions) {
   const {
     rigidBodyRef,
-    onSelect,
-    onDeselect,
     onDoubleClick,
     minThrowSpeed = 0.1,
     maxThrowSpeed = 5.0,
@@ -33,7 +29,6 @@ export function useGestures(options: UseGesturesOptions) {
   const gestureInterpreter = useRef(new GestureInterpreter())
   const velocityTracker = useRef(new PointerVelocityTracker())
   const dragStartPosition = useRef<Vector3 | null>(null)
-  const lastTapWasSelect = useRef(false)
   const setDraggingFile = useFileStore((state) => state.setDraggingFile)
 
   const handlePointerDown = useCallback(
@@ -133,22 +128,16 @@ export function useGestures(options: UseGesturesOptions) {
             console.log(`Throw impulse applied: speed=${speed.toFixed(2)} m/s`)
           }
         }
-        // Single tap without drag -> toggle selection
+        // Single tap without drag -> just log (no selection)
         else if (!wasDragging) {
-          if (lastTapWasSelect.current) {
-            onDeselect?.()
-            lastTapWasSelect.current = false
-          } else {
-            onSelect?.()
-            lastTapWasSelect.current = true
-          }
+          console.log('File tapped (no selection on tap)')
         }
       }
 
       velocityTracker.current.clear()
       dragStartPosition.current = null
     },
-    [rigidBodyRef, onSelect, onDeselect, minThrowSpeed, maxThrowSpeed, setDraggingFile]
+    [rigidBodyRef, minThrowSpeed, maxThrowSpeed, setDraggingFile]
   )
 
   const handlePointerCancel = useCallback((event: ThreeEvent<PointerEvent>) => {

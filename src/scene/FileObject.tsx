@@ -20,13 +20,11 @@ interface FileObjectProps {
 
 export function FileObject({ file, position }: FileObjectProps) {
   const settings = useAppStore((state) => state.settings)
-  const { selectFile, deselectFile, isFileSelected } = useFileStore()
   const rigidBodyRef = useRef<RapierRigidBody>(null)
   const [isHovered, setIsHovered] = useState(false)
 
   const material = getPhysicsMaterial(settings)
   const damping = getDampingConfig(settings)
-  const isSelected = isFileSelected(file.id)
 
   // Load thumbnail texture
   const texture = useTexture(file.thumbnailUrl || '/mock-assets/images/placeholder-1.png')
@@ -34,24 +32,15 @@ export function FileObject({ file, position }: FileObjectProps) {
   // File object size (8cm from PRD)
   const FILE_SIZE = 0.08
 
-  // Gesture handlers for drag, throw, select
+  // Gesture handlers for drag and throw (no selection)
   const { gestureHandlers } = useGestures({
     rigidBodyRef,
-    onSelect: () => {
-      selectFile(file.id)
-      console.log(`Selected: ${file.name}`)
-    },
-    onDeselect: () => {
-      deselectFile(file.id)
-      console.log(`Deselected: ${file.name}`)
-    },
     minThrowSpeed: 0.1,
     maxThrowSpeed: 3.0, // Lower max speed to keep files within boundaries
   })
 
-  // Color based on selection and hover state
+  // Color based on hover state only
   const getColor = () => {
-    if (isSelected) return '#667eea' // Purple when selected
     if (isHovered) return '#888888' // Gray when hovered
     return '#444444' // Dark gray default
   }
@@ -126,7 +115,7 @@ export function FileObject({ file, position }: FileObjectProps) {
         <Text
           position={[0, FILE_SIZE * 0.15 + 0.03, 0]}
           fontSize={0.012}
-          color={isSelected ? '#ffffff' : '#cccccc'}
+          color="#cccccc"
           anchorX="center"
           anchorY="bottom"
           maxWidth={FILE_SIZE * 1.2}
