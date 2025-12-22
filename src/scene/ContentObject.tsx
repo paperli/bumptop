@@ -6,12 +6,12 @@
  */
 
 import { useRef, useEffect } from 'react'
-import { RigidBody, RapierRigidBody } from '@react-three/rapier'
+import { RigidBody, RapierRigidBody, CuboidCollider } from '@react-three/rapier'
 import { Html } from '@react-three/drei'
 import { ContentObject as ContentObjectType } from '../types'
 import { useContentStore } from '../store/contentStore'
 import { useAppStore } from '../store/appStore'
-import { useContentGestures } from '../hooks/useContentGestures'
+import { useDraggableObject } from '../hooks/useDraggableObject'
 import { ImagePreview } from './content/ImagePreview'
 import { VideoPreview } from './content/VideoPreview'
 import { AudioPreview } from './content/AudioPreview'
@@ -31,12 +31,16 @@ export function ContentObject({ content, onRefReady }: ContentObjectProps) {
   const panelWidth = settings.defaultContentWidth
   const panelHeight = settings.defaultContentHeight
 
-  // Use gesture system for drag and throw
-  const { gestureHandlers } = useContentGestures({
+  // Use unified gesture system for drag and throw
+  const { gestureHandlers } = useDraggableObject({
     rigidBodyRef,
-    contentId: content.id,
-    maxThrowSpeed: 5.0,
-    dragSmoothing: 0.2,
+    objectId: content.id,
+    objectType: 'content',
+    config: {
+      maxThrowSpeed: 5.0,
+      dragSmoothing: 0.2,
+      boundaryMargin: 0.1, // Larger margin for content panels
+    },
   })
 
   // Notify parent when ref is ready or unmounted
@@ -99,7 +103,7 @@ export function ContentObject({ content, onRefReady }: ContentObjectProps) {
     <RigidBody
       ref={rigidBodyRef}
       type="dynamic"
-      colliders="cuboid"
+      colliders={false} // Manually define colliders below
       position={content.position}
       restitution={settings.restitution}
       friction={settings.friction}
@@ -108,6 +112,9 @@ export function ContentObject({ content, onRefReady }: ContentObjectProps) {
       lockRotations={true} // Keep panels upright
       gravityScale={0} // Float in air
     >
+      {/* Explicit collider with panel dimensions */}
+      <CuboidCollider args={[panelWidth / 2, panelHeight / 2, 0.01]} />
+
       <group {...gestureHandlers}>
         {/* Content panel */}
         <group>

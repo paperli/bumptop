@@ -15,6 +15,7 @@ import { ContentObject } from '../scene/ContentObject'
 import { useAppStore } from '../store/appStore'
 import { useFileStore } from '../store/fileStore'
 import { useContentStore } from '../store/contentStore'
+import { useDraggableStore } from '../store/draggableStore'
 import { getPhysicsWorldConfig } from '../utils/physicsConfig'
 import { MockProvider } from '../fs/MockProvider'
 
@@ -124,8 +125,9 @@ function BoundaryEnforcer({
 export function SimulatedMode() {
   const settings = useAppStore((state) => state.settings)
   const physicsConfig = getPhysicsWorldConfig(settings)
-  const { files, setProvider, loadFiles, isDraggingFile } = useFileStore()
-  const { contentObjects, isDraggingContent } = useContentStore()
+  const { files, setProvider, loadFiles } = useFileStore()
+  const contentObjects = useContentStore((state) => state.contentObjects)
+  const isDragging = useDraggableStore((state) => state.isDragging)
   const fileRefs = useRef<Map<string, RapierRigidBody>>(new Map())
   const contentRefs = useRef<Map<string, RapierRigidBody>>(new Map())
 
@@ -233,7 +235,7 @@ export function SimulatedMode() {
 
       {/* Controls for simulated mode */}
       <OrbitControls
-        enabled={!isDraggingFile && !isDraggingContent}
+        enabled={!isDragging}
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
