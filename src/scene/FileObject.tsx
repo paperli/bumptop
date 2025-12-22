@@ -36,7 +36,7 @@ export function FileObject({ file, position }: FileObjectProps) {
   const { gestureHandlers } = useGestures({
     rigidBodyRef,
     fileId: file.id, // Pass file ID to track which file is being dragged
-    minThrowSpeed: 0.1,
+    minThrowSpeed: 0.05, // Lower threshold for more responsive throwing
     maxThrowSpeed: 3.0, // Lower max speed to keep files within boundaries
     dragSmoothing: 0.2, // Lower = more responsive, higher = smoother (0-1)
   })

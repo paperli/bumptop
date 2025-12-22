@@ -12,8 +12,8 @@ interface PointerSample {
 
 export class PointerVelocityTracker {
   private samples: PointerSample[] = []
-  private maxSamples = 5 // Keep last 5 samples for velocity calculation
-  private maxAge = 100 // Only consider samples from last 100ms
+  private maxSamples = 10 // Keep last 10 samples for better velocity calculation
+  private maxAge = 150 // Only consider samples from last 150ms
 
   /**
    * Add a new pointer position sample
@@ -35,6 +35,7 @@ export class PointerVelocityTracker {
   /**
    * Calculate velocity vector based on recent samples
    * Returns velocity in units per second
+   * Uses weighted average of adjacent sample pairs for smoother results
    */
   getVelocity(): Vector3 {
     const now = performance.now()
@@ -48,19 +49,41 @@ export class PointerVelocityTracker {
       return new Vector3(0, 0, 0)
     }
 
-    // Use first and last sample for velocity calculation
-    const first = recentSamples[0]
-    const last = recentSamples[recentSamples.length - 1]
+    // Calculate velocity between each pair of adjacent samples
+    const velocities: Vector3[] = []
+    const weights: number[] = []
 
-    const deltaTime = (last.timestamp - first.timestamp) / 1000 // Convert to seconds
-    if (deltaTime === 0) {
+    for (let i = 1; i < recentSamples.length; i++) {
+      const prev = recentSamples[i - 1]
+      const curr = recentSamples[i]
+
+      const deltaTime = (curr.timestamp - prev.timestamp) / 1000 // Convert to seconds
+      if (deltaTime > 0) {
+        const deltaPosition = curr.position.clone().sub(prev.position)
+        const velocity = deltaPosition.divideScalar(deltaTime)
+
+        // Weight more recent samples higher (exponential decay)
+        const age = now - curr.timestamp
+        const weight = Math.exp(-age / 50) // 50ms decay constant
+
+        velocities.push(velocity)
+        weights.push(weight)
+      }
+    }
+
+    if (velocities.length === 0) {
       return new Vector3(0, 0, 0)
     }
 
-    const deltaPosition = last.position.clone().sub(first.position)
-    const velocity = deltaPosition.divideScalar(deltaTime)
+    // Weighted average of velocities
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0)
+    const avgVelocity = new Vector3(0, 0, 0)
 
-    return velocity
+    for (let i = 0; i < velocities.length; i++) {
+      avgVelocity.add(velocities[i].multiplyScalar(weights[i] / totalWeight))
+    }
+
+    return avgVelocity
   }
 
   /**
@@ -82,5 +105,12 @@ export class PointerVelocityTracker {
    */
   hasEnoughSamples(): boolean {
     return this.samples.length >= 2
+  }
+
+  /**
+   * Get current sample count
+   */
+  getSampleCount(): number {
+    return this.samples.length
   }
 }

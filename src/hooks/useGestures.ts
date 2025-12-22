@@ -34,6 +34,7 @@ export function useGestures(options: UseGesturesOptions) {
   const velocityTracker = useRef(new PointerVelocityTracker())
   const dragStartPosition = useRef<Vector3 | null>(null)
   const targetPosition = useRef<Vector3 | null>(null) // Target position for smooth interpolation
+  const isDraggingStartedRef = useRef(false) // Track if we've started dragging motion
   const setDraggingFile = useFileStore((state) => state.setDraggingFile)
   const draggingFileId = useFileStore((state) => state.draggingFileId)
 
@@ -63,7 +64,7 @@ export function useGestures(options: UseGesturesOptions) {
 
       // Also disable OrbitControls via state (backup mechanism)
       setDraggingFile(true, fileId)
-      console.log(`Pointer down on file ${fileId} - OrbitControls disabled`)
+      console.log(`[Drag] Pointer down on file ${fileId}`)
 
       // Store starting position for drag
       if (rigidBodyRef.current) {
@@ -74,7 +75,9 @@ export function useGestures(options: UseGesturesOptions) {
         rigidBodyRef.current.setBodyType(1, true) // 1 = kinematic
       }
 
+      // Clear velocity tracker to start fresh
       velocityTracker.current.clear()
+      isDraggingStartedRef.current = false
     },
     [rigidBodyRef, setDraggingFile, draggingFileId, fileId]
   )
@@ -94,17 +97,19 @@ export function useGestures(options: UseGesturesOptions) {
       if (rigidBodyRef.current) {
         // Get world position from pointer
         const worldPos = event.point
-
-        // Track velocity for throw detection
-        velocityTracker.current.addSample(worldPos)
+        const currentPos = rigidBodyRef.current.translation()
 
         // Check if we've moved enough to start dragging (8px threshold)
         const isDragging = gestureInterpreter.current.isDraggingGesture()
 
         if (isDragging) {
-          const currentPos = rigidBodyRef.current.translation()
+          // Log when dragging actually starts (once per drag session)
+          if (!isDraggingStartedRef.current) {
+            console.log(`[Drag] Started dragging file ${fileId} (8px threshold crossed)`)
+            isDraggingStartedRef.current = true
+          }
 
-          // Update target position
+          // Update target position (XZ plane only, lock Y to current height)
           targetPosition.current = new Vector3(worldPos.x, currentPos.y, worldPos.z)
 
           // Smooth interpolation (lerp) between current and target position
@@ -113,10 +118,17 @@ export function useGestures(options: UseGesturesOptions) {
           const newX = currentPos.x + (targetPosition.current.x - currentPos.x) * lerpFactor
           const newZ = currentPos.z + (targetPosition.current.z - currentPos.z) * lerpFactor
 
+          // Update position
           rigidBodyRef.current.setTranslation(
             { x: newX, y: currentPos.y, z: newZ },
             true
           )
+
+          // CRITICAL: Track velocity of actual object position (after lerp), not pointer
+          // Only track XZ plane (horizontal movement), ignore Y
+          const objectPos = rigidBodyRef.current.translation()
+          const trackingPos = new Vector3(objectPos.x, 0, objectPos.z)
+          velocityTracker.current.addSample(trackingPos)
         }
       }
     },
@@ -150,7 +162,7 @@ export function useGestures(options: UseGesturesOptions) {
       // Re-enable OrbitControls if we were dragging
       if (wasDragging) {
         setDraggingFile(false)
-        console.log('Drag ended - OrbitControls enabled')
+        console.log(`[Drag] Ended dragging file ${fileId}`)
       }
 
       if (rigidBodyRef.current) {
@@ -160,37 +172,44 @@ export function useGestures(options: UseGesturesOptions) {
         // If was dragging, apply throw impulse
         if (wasDragging) {
           const hasEnoughSamples = velocityTracker.current.hasEnoughSamples()
-          console.log(`Drag ended - has enough samples: ${hasEnoughSamples}`)
+          const sampleCount = velocityTracker.current.getSampleCount()
+
+          console.log(`[Throw] Analyzing throw with ${sampleCount} samples`)
 
           if (hasEnoughSamples) {
             const velocity = velocityTracker.current.getVelocity()
+
+            // Only use XZ plane for throw (ignore Y component, which should already be 0)
+            velocity.y = 0
             const speed = velocity.length()
 
-            console.log(`Velocity: x=${velocity.x.toFixed(2)}, y=${velocity.y.toFixed(2)}, z=${velocity.z.toFixed(2)}, speed=${speed.toFixed(2)} m/s`)
+            console.log(`[Throw] Raw velocity: x=${velocity.x.toFixed(3)}, z=${velocity.z.toFixed(3)}, speed=${speed.toFixed(3)} m/s`)
 
             // Only apply impulse if speed is above minimum
             if (speed > minThrowSpeed) {
               // Clamp velocity to max throw speed
+              let clampedSpeed = speed
               if (speed > maxThrowSpeed) {
                 velocity.normalize().multiplyScalar(maxThrowSpeed)
-                console.log(`Velocity clamped to max: ${maxThrowSpeed} m/s`)
+                clampedSpeed = maxThrowSpeed
+                console.log(`[Throw] Speed clamped: ${speed.toFixed(3)} → ${maxThrowSpeed} m/s`)
               }
 
               // Apply impulse (convert velocity to impulse by multiplying by mass estimate)
               const mass = 0.5 // Estimate mass for file objects
-              const impulse = velocity.multiplyScalar(mass)
+              const impulse = velocity.clone().multiplyScalar(mass)
 
               rigidBodyRef.current.applyImpulse(
-                { x: impulse.x, y: impulse.y, z: impulse.z },
+                { x: impulse.x, y: 0, z: impulse.z }, // Ensure Y=0
                 true
               )
 
-              console.log(`✓ Throw impulse applied: speed=${speed.toFixed(2)} m/s, impulse=[${impulse.x.toFixed(2)}, ${impulse.y.toFixed(2)}, ${impulse.z.toFixed(2)}]`)
+              console.log(`[Throw] ✓ Impulse applied: [${impulse.x.toFixed(3)}, 0, ${impulse.z.toFixed(3)}], speed=${clampedSpeed.toFixed(3)} m/s`)
             } else {
-              console.log(`Speed too low (${speed.toFixed(2)} < ${minThrowSpeed}), no throw`)
+              console.log(`[Throw] ✗ Speed too low: ${speed.toFixed(3)} < ${minThrowSpeed} m/s`)
             }
           } else {
-            console.log('Not enough velocity samples for throw')
+            console.log('[Throw] ✗ Not enough samples (need at least 2)')
           }
         }
         // Single tap without drag -> just log (no selection)
