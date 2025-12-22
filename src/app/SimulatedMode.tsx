@@ -1,13 +1,21 @@
 /**
  * Simulated Mode Component
  * Renders a 3D scene without WebXR (fallback mode for non-AR devices)
+ * Phase 2: Added Rapier physics engine
  */
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
+import { Physics } from '@react-three/rapier'
 import { DeskBoundary } from '../scene/DeskBoundary'
+import { TestCube } from '../scene/TestCube'
+import { useAppStore } from '../store/appStore'
+import { getPhysicsWorldConfig } from '../utils/physicsConfig'
 
 export function SimulatedMode() {
+  const settings = useAppStore((state) => state.settings)
+  const physicsConfig = getPhysicsWorldConfig(settings)
+
   return (
     <Canvas
       camera={{
@@ -32,8 +40,19 @@ export function SimulatedMode() {
         shadow-camera-bottom={-10}
       />
 
-      {/* Scene */}
-      <DeskBoundary />
+      {/* Physics World (Rapier) */}
+      <Physics
+        gravity={physicsConfig.gravity}
+        timeStep={physicsConfig.timestep}
+        paused={false}
+        debug={settings.showBoundaryWireframe}
+      >
+        {/* Scene with physics */}
+        <DeskBoundary />
+
+        {/* Test cube to verify physics (Phase 2) */}
+        <TestCube />
+      </Physics>
 
       {/* Controls for simulated mode */}
       <OrbitControls
