@@ -2,16 +2,16 @@
  * Content Object Component
  * Displays file content in a floating preview panel
  * Supports images, videos, audio, and text
+ * Now with full physics and gesture support
  */
 
-import { useRef, useState } from 'react'
+import { useRef, useEffect } from 'react'
 import { RigidBody, RapierRigidBody } from '@react-three/rapier'
 import { Html } from '@react-three/drei'
-import { ThreeEvent } from '@react-three/fiber'
-import { Vector3 } from 'three'
 import { ContentObject as ContentObjectType } from '../types'
 import { useContentStore } from '../store/contentStore'
 import { useAppStore } from '../store/appStore'
+import { useContentGestures } from '../hooks/useContentGestures'
 import { ImagePreview } from './content/ImagePreview'
 import { VideoPreview } from './content/VideoPreview'
 import { AudioPreview } from './content/AudioPreview'
@@ -19,47 +19,38 @@ import { TextPreview } from './content/TextPreview'
 
 interface ContentObjectProps {
   content: ContentObjectType
+  onRefReady?: (contentId: string, ref: RapierRigidBody | null) => void
 }
 
-export function ContentObject({ content }: ContentObjectProps) {
+export function ContentObject({ content, onRefReady }: ContentObjectProps) {
   const settings = useAppStore((state) => state.settings)
   const closeContent = useContentStore((state) => state.closeContent)
   const rigidBodyRef = useRef<RapierRigidBody>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const dragStartPos = useRef<Vector3 | null>(null)
 
   // Panel dimensions from settings
   const panelWidth = settings.defaultContentWidth
   const panelHeight = settings.defaultContentHeight
 
-  // Handle dragging
-  const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
-    event.stopPropagation()
-    setIsDragging(true)
+  // Use gesture system for drag and throw
+  const { gestureHandlers } = useContentGestures({
+    rigidBodyRef,
+    contentId: content.id,
+    maxThrowSpeed: 5.0,
+    dragSmoothing: 0.2,
+  })
 
-    if (rigidBodyRef.current) {
-      const pos = rigidBodyRef.current.translation()
-      dragStartPos.current = new Vector3(pos.x, pos.y, pos.z)
+  // Notify parent when ref is ready or unmounted
+  useEffect(() => {
+    if (onRefReady && rigidBodyRef.current) {
+      onRefReady(content.id, rigidBodyRef.current)
     }
-  }
 
-  const handlePointerMove = (event: ThreeEvent<PointerEvent>) => {
-    if (!isDragging || !rigidBodyRef.current) return
-
-    const worldPos = event.point
-    const currentPos = rigidBodyRef.current.translation()
-
-    // Update position on XZ plane, keep Y fixed
-    rigidBodyRef.current.setTranslation(
-      { x: worldPos.x, y: currentPos.y, z: worldPos.z },
-      true
-    )
-  }
-
-  const handlePointerUp = () => {
-    setIsDragging(false)
-    dragStartPos.current = null
-  }
+    return () => {
+      if (onRefReady) {
+        onRefReady(content.id, null)
+      }
+    }
+  }, [content.id, onRefReady])
 
   const handleClose = () => {
     closeContent(content.id)
@@ -107,24 +98,29 @@ export function ContentObject({ content }: ContentObjectProps) {
   return (
     <RigidBody
       ref={rigidBodyRef}
-      type="kinematic"
-      colliders={false}
+      type="dynamic"
+      colliders="cuboid"
       position={content.position}
+      restitution={settings.restitution}
+      friction={settings.friction}
+      linearDamping={settings.linearDamping}
+      angularDamping={settings.angularDamping}
+      lockRotations={true} // Keep panels upright
+      gravityScale={0} // Float in air
     >
-      <group>
+      <group {...gestureHandlers}>
         {/* Content panel */}
-        <group
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-        >
+        <group>
           {renderContent()}
         </group>
 
         {/* Close button (HTML overlay) */}
         <Html position={[panelWidth / 2 - 0.02, panelHeight / 2 - 0.02, 0]} center>
           <button
-            onClick={handleClose}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleClose()
+            }}
             style={{
               width: '30px',
               height: '30px',
@@ -138,6 +134,7 @@ export function ContentObject({ content }: ContentObjectProps) {
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              pointerEvents: 'auto',
             }}
           >
             ×

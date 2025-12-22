@@ -51,13 +51,15 @@ export function TextPreview({ contentUrl, width, height, fileName }: TextPreview
   const endLine = Math.min(startLine + linesPerPage, lines.length)
   const pageLines = lines.slice(startLine, endLine)
 
-  const goToPreviousPage = () => {
+  const goToPreviousPage = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (currentPage > 0) {
       setCurrentPage(currentPage - 1)
     }
   }
 
-  const goToNextPage = () => {
+  const goToNextPage = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (currentPage < totalPages - 1) {
       setCurrentPage(currentPage + 1)
     }
@@ -84,6 +86,7 @@ export function TextPreview({ contentUrl, width, height, fileName }: TextPreview
             fontFamily: 'monospace',
             display: 'flex',
             flexDirection: 'column',
+            pointerEvents: 'auto',
           }}
         >
           {/* File name header */}

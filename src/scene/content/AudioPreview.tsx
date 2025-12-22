@@ -49,7 +49,8 @@ export function AudioPreview({ contentUrl, width, height, fileName }: AudioPrevi
     }
   }, [contentUrl])
 
-  const togglePlayPause = () => {
+  const togglePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (!audioRef.current) return
 
     if (isPlaying) {
@@ -94,6 +95,7 @@ export function AudioPreview({ contentUrl, width, height, fileName }: AudioPrevi
             borderRadius: '12px',
             color: 'white',
             fontFamily: 'Arial, sans-serif',
+            pointerEvents: 'auto',
           }}
         >
           {/* File name */}

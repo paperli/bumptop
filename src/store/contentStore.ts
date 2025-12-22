@@ -11,16 +11,23 @@ interface ContentState {
   // Open content objects
   contentObjects: Map<string, ContentObject>
 
+  // Drag state (similar to fileStore)
+  isDraggingContent: boolean
+  draggingContentId: string | null
+
   // Actions
   openContent: (fileEntry: FileEntry, position: [number, number, number]) => Promise<void>
   closeContent: (contentId: string) => void
   updateContentPosition: (contentId: string, position: [number, number, number]) => void
   updateContentScale: (contentId: string, scale: number) => void
   isContentOpen: (fileId: string) => boolean
+  setDraggingContent: (isDragging: boolean, contentId?: string | null) => void
 }
 
 export const useContentStore = create<ContentState>((set, get) => ({
   contentObjects: new Map(),
+  isDraggingContent: false,
+  draggingContentId: null,
 
   openContent: async (fileEntry, position) => {
     const { contentObjects } = get()
@@ -127,5 +134,13 @@ export const useContentStore = create<ContentState>((set, get) => ({
 
   isContentOpen: (fileId) => {
     return get().contentObjects.has(fileId)
+  },
+
+  setDraggingContent: (isDragging, contentId = null) => {
+    set({
+      isDraggingContent: isDragging,
+      draggingContentId: isDragging ? contentId : null,
+    })
+    console.log(`[Content] Dragging: ${isDragging}, contentId: ${contentId}`)
   },
 }))

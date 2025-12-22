@@ -18,15 +18,23 @@ import { useContentStore } from '../store/contentStore'
 import { getPhysicsWorldConfig } from '../utils/physicsConfig'
 import { MockProvider } from '../fs/MockProvider'
 
-// Component that monitors and constrains all file positions
-function BoundaryEnforcer({ fileRefs }: { fileRefs: React.MutableRefObject<Map<string, RapierRigidBody>> }) {
+// Component that monitors and constrains all file and content positions
+function BoundaryEnforcer({
+  fileRefs,
+  contentRefs,
+}: {
+  fileRefs: React.MutableRefObject<Map<string, RapierRigidBody>>
+  contentRefs: React.MutableRefObject<Map<string, RapierRigidBody>>
+}) {
   const settings = useAppStore((state) => state.settings)
 
   useFrame(() => {
     const halfWidth = settings.deskWidth / 2
     const halfHeight = settings.deskHeight / 2
-    const margin = 0.04 // 4cm safety margin
+    const fileMargin = 0.04 // 4cm safety margin for files
+    const contentMargin = 0.1 // 10cm larger margin for content panels
 
+    // Enforce boundaries for files
     fileRefs.current.forEach((rigidBody, fileId) => {
       if (!rigidBody) return
 
@@ -36,20 +44,20 @@ function BoundaryEnforcer({ fileRefs }: { fileRefs: React.MutableRefObject<Map<s
       let newZ = pos.z
 
       // Check X bounds
-      if (pos.x < -halfWidth + margin) {
-        newX = -halfWidth + margin
+      if (pos.x < -halfWidth + fileMargin) {
+        newX = -halfWidth + fileMargin
         needsCorrection = true
-      } else if (pos.x > halfWidth - margin) {
-        newX = halfWidth - margin
+      } else if (pos.x > halfWidth - fileMargin) {
+        newX = halfWidth - fileMargin
         needsCorrection = true
       }
 
       // Check Z bounds
-      if (pos.z < -halfHeight + margin) {
-        newZ = -halfHeight + margin
+      if (pos.z < -halfHeight + fileMargin) {
+        newZ = -halfHeight + fileMargin
         needsCorrection = true
-      } else if (pos.z > halfHeight - margin) {
-        newZ = halfHeight - margin
+      } else if (pos.z > halfHeight - fileMargin) {
+        newZ = halfHeight - fileMargin
         needsCorrection = true
       }
 
@@ -67,6 +75,47 @@ function BoundaryEnforcer({ fileRefs }: { fileRefs: React.MutableRefObject<Map<s
         console.log(`[Boundary] Bounced file ${fileId} at bounds: [${newX.toFixed(2)}, ${newZ.toFixed(2)}]`)
       }
     })
+
+    // Enforce boundaries for content objects (larger margin)
+    contentRefs.current.forEach((rigidBody, contentId) => {
+      if (!rigidBody) return
+
+      const pos = rigidBody.translation()
+      let needsCorrection = false
+      let newX = pos.x
+      let newZ = pos.z
+
+      // Check X bounds
+      if (pos.x < -halfWidth + contentMargin) {
+        newX = -halfWidth + contentMargin
+        needsCorrection = true
+      } else if (pos.x > halfWidth - contentMargin) {
+        newX = halfWidth - contentMargin
+        needsCorrection = true
+      }
+
+      // Check Z bounds
+      if (pos.z < -halfHeight + contentMargin) {
+        newZ = -halfHeight + contentMargin
+        needsCorrection = true
+      } else if (pos.z > halfHeight - contentMargin) {
+        newZ = halfHeight - contentMargin
+        needsCorrection = true
+      }
+
+      if (needsCorrection) {
+        // Clamp position and bounce back
+        rigidBody.setTranslation({ x: newX, y: pos.y, z: newZ }, true)
+
+        const vel = rigidBody.linvel()
+        const bounceRestitution = 0.5
+        const newVelX = pos.x !== newX ? -vel.x * bounceRestitution : vel.x
+        const newVelZ = pos.z !== newZ ? -vel.z * bounceRestitution : vel.z
+        rigidBody.setLinvel({ x: newVelX, y: vel.y, z: newVelZ }, true)
+
+        console.log(`[Boundary] Bounced content ${contentId} at bounds: [${newX.toFixed(2)}, ${newZ.toFixed(2)}]`)
+      }
+    })
   })
 
   return null
@@ -76,8 +125,9 @@ export function SimulatedMode() {
   const settings = useAppStore((state) => state.settings)
   const physicsConfig = getPhysicsWorldConfig(settings)
   const { files, setProvider, loadFiles, isDraggingFile } = useFileStore()
-  const contentObjects = useContentStore((state) => state.contentObjects)
+  const { contentObjects, isDraggingContent } = useContentStore()
   const fileRefs = useRef<Map<string, RapierRigidBody>>(new Map())
+  const contentRefs = useRef<Map<string, RapierRigidBody>>(new Map())
 
   // Initialize MockProvider and load files on mount
   useEffect(() => {
@@ -162,18 +212,28 @@ export function SimulatedMode() {
           />
         ))}
 
-        {/* Boundary enforcer - continuously monitors all file positions */}
-        <BoundaryEnforcer fileRefs={fileRefs} />
+        {/* Boundary enforcer - continuously monitors all file and content positions */}
+        <BoundaryEnforcer fileRefs={fileRefs} contentRefs={contentRefs} />
 
         {/* Content objects (Phase 4) - floating preview panels */}
         {Array.from(contentObjects.values()).map((content) => (
-          <ContentObject key={content.id} content={content} />
+          <ContentObject
+            key={content.id}
+            content={content}
+            onRefReady={(contentId, ref) => {
+              if (ref) {
+                contentRefs.current.set(contentId, ref)
+              } else {
+                contentRefs.current.delete(contentId)
+              }
+            }}
+          />
         ))}
       </Physics>
 
       {/* Controls for simulated mode */}
       <OrbitControls
-        enabled={!isDraggingFile}
+        enabled={!isDraggingFile && !isDraggingContent}
         enablePan={true}
         enableZoom={true}
         enableRotate={true}

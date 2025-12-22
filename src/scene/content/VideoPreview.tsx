@@ -53,7 +53,8 @@ export function VideoPreview({ contentUrl, width, height }: VideoPreviewProps) {
     }
   }, [contentUrl])
 
-  const togglePlayPause = () => {
+  const togglePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (!videoRef.current) return
 
     if (isPlaying) {
@@ -125,6 +126,7 @@ export function VideoPreview({ contentUrl, width, height }: VideoPreviewProps) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            pointerEvents: 'auto',
           }}
         >
           {isPlaying ? '⏸' : '▶'}
