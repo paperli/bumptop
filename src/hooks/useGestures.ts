@@ -38,7 +38,18 @@ export function useGestures(options: UseGesturesOptions) {
       const { pointerId, clientX, clientY } = event.nativeEvent
       gestureInterpreter.current.onPointerDown(pointerId, clientX, clientY)
 
-      // Disable OrbitControls immediately to prevent viewport movement
+      // Capture the pointer to prevent OrbitControls from seeing events
+      // This is more reliable than state-based disabling for the first interaction
+      if (event.target && 'setPointerCapture' in event.target) {
+        try {
+          ;(event.target as any).setPointerCapture(pointerId)
+          console.log('Pointer captured - OrbitControls will not see events')
+        } catch (e) {
+          console.warn('Failed to capture pointer:', e)
+        }
+      }
+
+      // Also disable OrbitControls via state (backup mechanism)
       setDraggingFile(true)
       console.log('Pointer down - OrbitControls disabled')
 
@@ -94,6 +105,16 @@ export function useGestures(options: UseGesturesOptions) {
       const wasDragging = gestureInterpreter.current.isDraggingGesture()
 
       gestureInterpreter.current.onPointerUp(pointerId)
+
+      // Release pointer capture
+      if (event.target && 'releasePointerCapture' in event.target) {
+        try {
+          ;(event.target as any).releasePointerCapture(pointerId)
+          console.log('Pointer released')
+        } catch (e) {
+          // Pointer might already be released, ignore
+        }
+      }
 
       // Re-enable OrbitControls if we were dragging
       if (wasDragging) {
@@ -157,6 +178,15 @@ export function useGestures(options: UseGesturesOptions) {
     const { pointerId } = event.nativeEvent
     gestureInterpreter.current.onPointerCancel(pointerId)
 
+    // Release pointer capture
+    if (event.target && 'releasePointerCapture' in event.target) {
+      try {
+        ;(event.target as any).releasePointerCapture(pointerId)
+      } catch (e) {
+        // Ignore if already released
+      }
+    }
+
     // Re-enable OrbitControls
     setDraggingFile(false)
     console.log('Drag cancelled - OrbitControls enabled')
@@ -176,6 +206,15 @@ export function useGestures(options: UseGesturesOptions) {
 
       // Treat pointer leaving as a cancel event
       gestureInterpreter.current.onPointerCancel(pointerId)
+
+      // Release pointer capture
+      if (event.target && 'releasePointerCapture' in event.target) {
+        try {
+          ;(event.target as any).releasePointerCapture(pointerId)
+        } catch (e) {
+          // Ignore if already released
+        }
+      }
 
       // Re-enable OrbitControls
       setDraggingFile(false)
