@@ -115,7 +115,13 @@ export function ContentObject({ content, onRefReady }: ContentObjectProps) {
       {/* Explicit collider with panel dimensions */}
       <CuboidCollider args={[panelWidth / 2, panelHeight / 2, 0.01]} />
 
-      <group {...gestureHandlers}>
+      <group>
+        {/* Invisible hit area mesh for gesture detection - CRITICAL for pointer events */}
+        <mesh {...gestureHandlers}>
+          <planeGeometry args={[panelWidth, panelHeight]} />
+          <meshBasicMaterial transparent opacity={0} />
+        </mesh>
+
         {/* Content panel */}
         <group>
           {renderContent()}
