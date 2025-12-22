@@ -26,10 +26,41 @@ export class MockProvider implements FileSystemProvider {
   }
 
   async getFileContent(entry: FileEntry): Promise<FileContentHandle> {
-    // Return the thumbnail URL as content for now
-    // In Phase 4, we'll load actual content
+    // Map file ID to actual content URL
+    const contentUrlMap: Record<string, string> = {
+      // Videos - map to actual video files in public/mock-assets/videos/
+      'mock-vid-1': '/mock-assets/videos/sample-1.mp4',
+      'mock-vid-2': '/mock-assets/videos/sample-2.mp4',
+      'mock-vid-3': '/mock-assets/videos/sample-3.mp4',
+      'mock-vid-4': '/mock-assets/videos/sample-4.mp4',
+      'mock-vid-5': '/mock-assets/videos/sample-5.mp4',
+
+      // Audio - map to actual audio files in public/mock-assets/audio/
+      'mock-aud-1': '/mock-assets/audio/sample-1.mp3',
+      'mock-aud-2': '/mock-assets/audio/sample-2.mp3',
+      'mock-aud-3': '/mock-assets/audio/sample-3.mp3',
+      'mock-aud-4': '/mock-assets/audio/sample-4.mp3',
+      'mock-aud-5': '/mock-assets/audio/sample-5.mp3',
+
+      // Text - map to actual text files in public/mock-assets/text/
+      'mock-txt-1': '/mock-assets/text/sample.txt',
+      'mock-txt-2': '/mock-assets/text/notes.md',
+      'mock-txt-3': '/mock-assets/text/sample.txt',
+      'mock-txt-4': '/mock-assets/text/config.json',
+      'mock-txt-5': '/mock-assets/text/sample.txt',
+      'mock-txt-6': '/mock-assets/text/example.js',
+      'mock-txt-7': '/mock-assets/text/notes.md',
+      'mock-txt-8': '/mock-assets/text/sample.txt',
+      'mock-txt-9': '/mock-assets/text/config.json',
+      'mock-txt-10': '/mock-assets/text/sample.txt',
+    }
+
+    // For images, use thumbnail URL as content
+    // For other types, use mapped content URL or fallback to thumbnail
+    const contentUrl = contentUrlMap[entry.id] || entry.thumbnailUrl || ''
+
     return {
-      url: entry.thumbnailUrl || '',
+      url: contentUrl,
       mimeType: entry.mimeType,
     }
   }
