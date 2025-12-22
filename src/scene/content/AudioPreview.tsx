@@ -22,10 +22,25 @@ export function AudioPreview({ contentUrl, width, height, fileName }: AudioPrevi
 
   // Initialize audio element
   useEffect(() => {
+    // Guard against empty or invalid contentUrl
+    if (!contentUrl || contentUrl.trim() === '') {
+      console.error('[AudioPreview] Invalid contentUrl:', contentUrl)
+      setError('Invalid audio URL')
+      return
+    }
+
+    // Reset error state when trying to load new content
+    setError(null)
+
+    console.log(`[AudioPreview] Creating audio element for: ${contentUrl}`)
+
     const audio = new Audio(contentUrl)
+
     audio.addEventListener('loadedmetadata', () => {
       setDuration(audio.duration)
-      console.log('[AudioPreview] Audio loaded, duration:', audio.duration)
+      console.log(`[AudioPreview] ✓ Audio loaded successfully, duration: ${audio.duration}s`)
+      // Clear any error state when audio loads successfully
+      setError(null)
     })
 
     audio.addEventListener('timeupdate', () => {
@@ -37,8 +52,16 @@ export function AudioPreview({ contentUrl, width, height, fileName }: AudioPrevi
     })
 
     audio.addEventListener('error', (e) => {
-      console.error('[AudioPreview] Audio error:', e)
-      setError('Failed to load audio')
+      const error = audio.error
+      console.error('[AudioPreview] ✗ Audio error:', {
+        error: error,
+        code: error?.code,
+        message: error?.message,
+        src: audio.src,
+        networkState: audio.networkState,
+        readyState: audio.readyState,
+      })
+      setError(`Failed to load audio: ${error?.message || 'Unknown error'}`)
     })
 
     audioRef.current = audio

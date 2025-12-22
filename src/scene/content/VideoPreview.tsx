@@ -21,22 +21,45 @@ export function VideoPreview({ contentUrl, width, height }: VideoPreviewProps) {
 
   // Initialize video element and texture
   useEffect(() => {
+    // Guard against empty or invalid contentUrl
+    if (!contentUrl || contentUrl.trim() === '') {
+      console.error('[VideoPreview] Invalid contentUrl:', contentUrl)
+      setError('Invalid video URL')
+      return
+    }
+
+    // Reset error state when trying to load new content
+    setError(null)
+
+    console.log(`[VideoPreview] Creating video element for: ${contentUrl}`)
+
     const video = document.createElement('video')
     video.src = contentUrl
-    video.crossOrigin = 'anonymous'
+    // Don't set crossOrigin for same-origin content - can cause CORS issues
+    // video.crossOrigin = 'anonymous'
     video.loop = true
     video.muted = false
     video.playsInline = true
 
     video.addEventListener('loadeddata', () => {
-      console.log('[VideoPreview] Video loaded')
+      console.log(`[VideoPreview] ✓ Video loaded successfully: ${video.videoWidth}x${video.videoHeight}`)
       const texture = new VideoTexture(video)
       setVideoTexture(texture)
+      // Clear any error state when video loads successfully
+      setError(null)
     })
 
     video.addEventListener('error', (e) => {
-      console.error('[VideoPreview] Video error:', e)
-      setError('Failed to load video')
+      const error = video.error
+      console.error('[VideoPreview] ✗ Video error:', {
+        error: error,
+        code: error?.code,
+        message: error?.message,
+        src: video.src,
+        networkState: video.networkState,
+        readyState: video.readyState,
+      })
+      setError(`Failed to load video: ${error?.message || 'Unknown error'}`)
     })
 
     videoRef.current = video

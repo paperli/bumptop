@@ -62,7 +62,15 @@ export function ContentObject({ content, onRefReady }: ContentObjectProps) {
 
   // Render appropriate preview based on file kind
   const renderContent = () => {
+    console.log(`[ContentObject] Rendering content for ${content.fileEntry.name}:`, {
+      isLoading: content.isLoading,
+      hasContentUrl: !!content.contentUrl,
+      contentUrl: content.contentUrl,
+      kind: content.fileEntry.kind,
+    })
+
     if (content.isLoading) {
+      console.log(`[ContentObject] Showing loading state (gray panel)`)
       return (
         <mesh>
           <planeGeometry args={[panelWidth, panelHeight]} />
@@ -72,6 +80,7 @@ export function ContentObject({ content, onRefReady }: ContentObjectProps) {
     }
 
     if (!content.contentUrl) {
+      console.error(`[ContentObject] ERROR: No contentUrl! Showing red error panel`)
       return (
         <mesh>
           <planeGeometry args={[panelWidth, panelHeight]} />

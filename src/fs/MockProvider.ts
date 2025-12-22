@@ -26,6 +26,8 @@ export class MockProvider implements FileSystemProvider {
   }
 
   async getFileContent(entry: FileEntry): Promise<FileContentHandle> {
+    console.log(`[MockProvider] getFileContent called for: ${entry.name} (ID: ${entry.id}, Kind: ${entry.kind})`)
+
     // Map file ID to actual content URL
     const contentUrlMap: Record<string, string> = {
       // Videos - map to actual video files in public/mock-assets/videos/
@@ -58,6 +60,9 @@ export class MockProvider implements FileSystemProvider {
     // For images, use thumbnail URL as content
     // For other types, use mapped content URL or fallback to thumbnail
     const contentUrl = contentUrlMap[entry.id] || entry.thumbnailUrl || ''
+
+    console.log(`[MockProvider] Mapped URL: ${contentUrl}`)
+    console.log(`[MockProvider] Returning:`, { url: contentUrl, mimeType: entry.mimeType })
 
     return {
       url: contentUrl,
