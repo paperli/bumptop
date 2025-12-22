@@ -9,6 +9,7 @@ import { RapierRigidBody } from '@react-three/rapier'
 import { Vector3 } from 'three'
 import { GestureInterpreter } from '../input/GestureInterpreter'
 import { PointerVelocityTracker } from '../input/PointerVelocityTracker'
+import { useFileStore } from '../store/fileStore'
 
 export interface UseGesturesOptions {
   rigidBodyRef: React.RefObject<RapierRigidBody>
@@ -33,6 +34,7 @@ export function useGestures(options: UseGesturesOptions) {
   const velocityTracker = useRef(new PointerVelocityTracker())
   const dragStartPosition = useRef<Vector3 | null>(null)
   const lastTapWasSelect = useRef(false)
+  const setDraggingFile = useFileStore((state) => state.setDraggingFile)
 
   const handlePointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
@@ -58,10 +60,19 @@ export function useGestures(options: UseGesturesOptions) {
   const handlePointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       const { pointerId, clientX, clientY } = event.nativeEvent
+      const wasDragging = gestureInterpreter.current.isDraggingGesture()
+
       gestureInterpreter.current.onPointerMove(pointerId, clientX, clientY)
 
+      // Check if dragging just started
+      const isDragging = gestureInterpreter.current.isDraggingGesture()
+      if (!wasDragging && isDragging) {
+        setDraggingFile(true)
+        console.log('Drag started - OrbitControls disabled')
+      }
+
       // If dragging, update position
-      if (gestureInterpreter.current.isDraggingGesture() && rigidBodyRef.current) {
+      if (isDragging && rigidBodyRef.current) {
         // Get world position from pointer
         const worldPos = event.point
 
@@ -76,7 +87,7 @@ export function useGestures(options: UseGesturesOptions) {
         )
       }
     },
-    [rigidBodyRef]
+    [rigidBodyRef, setDraggingFile]
   )
 
   const handlePointerUp = useCallback(
@@ -87,6 +98,12 @@ export function useGestures(options: UseGesturesOptions) {
       const wasDragging = gestureInterpreter.current.isDraggingGesture()
 
       gestureInterpreter.current.onPointerUp(pointerId)
+
+      // Re-enable OrbitControls if we were dragging
+      if (wasDragging) {
+        setDraggingFile(false)
+        console.log('Drag ended - OrbitControls enabled')
+      }
 
       if (rigidBodyRef.current) {
         // Switch back to dynamic mode
@@ -131,12 +148,16 @@ export function useGestures(options: UseGesturesOptions) {
       velocityTracker.current.clear()
       dragStartPosition.current = null
     },
-    [rigidBodyRef, onSelect, onDeselect, minThrowSpeed, maxThrowSpeed]
+    [rigidBodyRef, onSelect, onDeselect, minThrowSpeed, maxThrowSpeed, setDraggingFile]
   )
 
   const handlePointerCancel = useCallback((event: ThreeEvent<PointerEvent>) => {
     const { pointerId } = event.nativeEvent
     gestureInterpreter.current.onPointerCancel(pointerId)
+
+    // Re-enable OrbitControls
+    setDraggingFile(false)
+    console.log('Drag cancelled - OrbitControls enabled')
 
     // Switch back to dynamic mode
     if (rigidBodyRef.current) {
@@ -145,7 +166,7 @@ export function useGestures(options: UseGesturesOptions) {
 
     velocityTracker.current.clear()
     dragStartPosition.current = null
-  }, [rigidBodyRef])
+  }, [rigidBodyRef, setDraggingFile])
 
   const handleWheel = useCallback(
     (event: ThreeEvent<WheelEvent>) => {

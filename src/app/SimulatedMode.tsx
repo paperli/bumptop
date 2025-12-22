@@ -19,7 +19,7 @@ import { MockProvider } from '../fs/MockProvider'
 export function SimulatedMode() {
   const settings = useAppStore((state) => state.settings)
   const physicsConfig = getPhysicsWorldConfig(settings)
-  const { files, setProvider, loadFiles } = useFileStore()
+  const { files, setProvider, loadFiles, isDraggingFile } = useFileStore()
 
   // Initialize MockProvider and load files on mount
   useEffect(() => {
@@ -96,6 +96,7 @@ export function SimulatedMode() {
 
       {/* Controls for simulated mode */}
       <OrbitControls
+        enabled={!isDraggingFile}
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
