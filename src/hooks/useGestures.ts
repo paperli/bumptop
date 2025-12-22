@@ -16,6 +16,7 @@ export interface UseGesturesOptions {
   onDoubleClick?: () => void
   minThrowSpeed?: number
   maxThrowSpeed?: number
+  dragSmoothing?: number // 0-1, higher = smoother but more lag (default: 0.3)
 }
 
 export function useGestures(options: UseGesturesOptions) {
@@ -24,11 +25,13 @@ export function useGestures(options: UseGesturesOptions) {
     onDoubleClick,
     minThrowSpeed = 0.1,
     maxThrowSpeed = 5.0,
+    dragSmoothing = 0.3,
   } = options
 
   const gestureInterpreter = useRef(new GestureInterpreter())
   const velocityTracker = useRef(new PointerVelocityTracker())
   const dragStartPosition = useRef<Vector3 | null>(null)
+  const targetPosition = useRef<Vector3 | null>(null) // Target position for smooth interpolation
   const setDraggingFile = useFileStore((state) => state.setDraggingFile)
 
   const handlePointerDown = useCallback(
@@ -85,16 +88,25 @@ export function useGestures(options: UseGesturesOptions) {
         const isDragging = gestureInterpreter.current.isDraggingGesture()
 
         if (isDragging) {
-          // Move object to pointer position (keep Y axis)
           const currentPos = rigidBodyRef.current.translation()
+
+          // Update target position
+          targetPosition.current = new Vector3(worldPos.x, currentPos.y, worldPos.z)
+
+          // Smooth interpolation (lerp) between current and target position
+          // lerp factor: 0 = no movement, 1 = instant snap
+          const lerpFactor = 1 - dragSmoothing
+          const newX = currentPos.x + (targetPosition.current.x - currentPos.x) * lerpFactor
+          const newZ = currentPos.z + (targetPosition.current.z - currentPos.z) * lerpFactor
+
           rigidBodyRef.current.setTranslation(
-            { x: worldPos.x, y: currentPos.y, z: worldPos.z },
+            { x: newX, y: currentPos.y, z: newZ },
             true
           )
         }
       }
     },
-    [rigidBodyRef]
+    [rigidBodyRef, dragSmoothing]
   )
 
   const handlePointerUp = useCallback(
@@ -170,6 +182,7 @@ export function useGestures(options: UseGesturesOptions) {
 
       velocityTracker.current.clear()
       dragStartPosition.current = null
+      targetPosition.current = null
     },
     [rigidBodyRef, minThrowSpeed, maxThrowSpeed, setDraggingFile]
   )
@@ -198,6 +211,7 @@ export function useGestures(options: UseGesturesOptions) {
 
     velocityTracker.current.clear()
     dragStartPosition.current = null
+    targetPosition.current = null
   }, [rigidBodyRef, setDraggingFile])
 
   const handlePointerLeave = useCallback(
@@ -227,6 +241,7 @@ export function useGestures(options: UseGesturesOptions) {
 
       velocityTracker.current.clear()
       dragStartPosition.current = null
+      targetPosition.current = null
     },
     [rigidBodyRef, setDraggingFile]
   )

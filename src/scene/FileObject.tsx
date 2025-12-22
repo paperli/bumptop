@@ -37,6 +37,7 @@ export function FileObject({ file, position }: FileObjectProps) {
     rigidBodyRef,
     minThrowSpeed: 0.1,
     maxThrowSpeed: 3.0, // Lower max speed to keep files within boundaries
+    dragSmoothing: 0.2, // Lower = more responsive, higher = smoother (0-1)
   })
 
   // Color based on hover state only
