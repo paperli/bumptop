@@ -10,6 +10,7 @@ import { Text, useTexture } from '@react-three/drei'
 import { FileEntry } from '../types'
 import { useAppStore } from '../store/appStore'
 import { useFileStore } from '../store/fileStore'
+import { useContentStore } from '../store/contentStore'
 import { getPhysicsMaterial, getDampingConfig } from '../utils/physicsConfig'
 import { useGestures } from '../hooks/useGestures'
 
@@ -23,9 +24,20 @@ export function FileObject({ file, position, onRefReady }: FileObjectProps) {
   const settings = useAppStore((state) => state.settings)
   const rigidBodyRef = useRef<RapierRigidBody>(null)
   const [isHovered, setIsHovered] = useState(false)
+  const openContent = useContentStore((state) => state.openContent)
 
   const material = getPhysicsMaterial(settings)
   const damping = getDampingConfig(settings)
+
+  // Handle double-tap to open content preview
+  const handleDoubleClick = () => {
+    if (rigidBodyRef.current) {
+      const pos = rigidBodyRef.current.translation()
+      // Spawn content object slightly above and in front of the file
+      const spawnPosition: [number, number, number] = [pos.x, pos.y + 0.15, pos.z + 0.1]
+      openContent(file, spawnPosition)
+    }
+  }
 
   // Register rigid body ref when ready
   useEffect(() => {
@@ -49,6 +61,7 @@ export function FileObject({ file, position, onRefReady }: FileObjectProps) {
   const { gestureHandlers } = useGestures({
     rigidBodyRef,
     fileId: file.id, // Pass file ID to track which file is being dragged
+    onDoubleClick: handleDoubleClick, // Open content preview on double-tap
     minThrowSpeed: 0.05, // Lower threshold for more responsive throwing
     maxThrowSpeed: 8.0, // Higher max speed for long distance throws (3.0 → 8.0)
     dragSmoothing: 0.1, // More responsive tracking (0.2 → 0.1)

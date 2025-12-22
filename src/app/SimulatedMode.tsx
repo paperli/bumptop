@@ -11,8 +11,10 @@ import { OrbitControls } from '@react-three/drei'
 import { Physics, RapierRigidBody } from '@react-three/rapier'
 import { DeskBoundary } from '../scene/DeskBoundary'
 import { FileObject } from '../scene/FileObject'
+import { ContentObject } from '../scene/ContentObject'
 import { useAppStore } from '../store/appStore'
 import { useFileStore } from '../store/fileStore'
+import { useContentStore } from '../store/contentStore'
 import { getPhysicsWorldConfig } from '../utils/physicsConfig'
 import { MockProvider } from '../fs/MockProvider'
 
@@ -74,6 +76,7 @@ export function SimulatedMode() {
   const settings = useAppStore((state) => state.settings)
   const physicsConfig = getPhysicsWorldConfig(settings)
   const { files, setProvider, loadFiles, isDraggingFile } = useFileStore()
+  const contentObjects = useContentStore((state) => state.contentObjects)
   const fileRefs = useRef<Map<string, RapierRigidBody>>(new Map())
 
   // Initialize MockProvider and load files on mount
@@ -161,6 +164,11 @@ export function SimulatedMode() {
 
         {/* Boundary enforcer - continuously monitors all file positions */}
         <BoundaryEnforcer fileRefs={fileRefs} />
+
+        {/* Content objects (Phase 4) - floating preview panels */}
+        {Array.from(contentObjects.values()).map((content) => (
+          <ContentObject key={content.id} content={content} />
+        ))}
       </Physics>
 
       {/* Controls for simulated mode */}

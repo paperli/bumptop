@@ -59,6 +59,15 @@ export interface DeskBoundary {
   height: number // meters
 }
 
+export interface ContentObject {
+  id: string
+  fileEntry: FileEntry
+  position: [number, number, number]
+  scale: number
+  contentUrl?: string // Loaded content URL
+  isLoading: boolean
+}
+
 export interface PhysicsConfig {
   gravity: number
   restitution: number

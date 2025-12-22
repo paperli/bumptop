@@ -16,17 +16,24 @@ const DEFAULT_CONFIG: GestureConfig = {
   minScale: 0.5, // Minimum scale multiplier
 }
 
+export interface GestureCallbacks {
+  onDoubleTap?: () => void
+  onSingleTap?: () => void
+}
+
 export class GestureInterpreter {
   private state: GestureState = 'idle'
   private config: GestureConfig
+  private callbacks: GestureCallbacks
   private pointers: Map<number, PointerInfo> = new Map()
   private pressStartTime = 0
   private pressStartPosition = { x: 0, y: 0 }
   private lastTapTime = 0
   private isDragging = false
 
-  constructor(config?: Partial<GestureConfig>) {
+  constructor(config?: Partial<GestureConfig>, callbacks?: GestureCallbacks) {
     this.config = { ...DEFAULT_CONFIG, ...config }
+    this.callbacks = callbacks || {}
   }
 
   /**
@@ -122,13 +129,22 @@ export class GestureInterpreter {
     else if (this.state === 'pressing' && pressDuration < this.config.tapMaxMs) {
       // Check for double-tap
       const timeSinceLastTap = now - this.lastTapTime
-      if (timeSinceLastTap < this.config.doubleTapMaxMs) {
+      if (timeSinceLastTap < this.config.doubleTapMaxMs && timeSinceLastTap > 0) {
         console.log('GestureInterpreter: double-tap detected')
+        // Trigger callback
+        if (this.callbacks.onDoubleTap) {
+          this.callbacks.onDoubleTap()
+        }
         // Reset last tap time to prevent triple-tap
         this.lastTapTime = 0
       } else {
         console.log('GestureInterpreter: single tap')
         this.lastTapTime = now
+        // Trigger callback (but wait to see if it's a double-tap)
+        // We'll handle single tap in a setTimeout if needed later
+        if (this.callbacks.onSingleTap) {
+          this.callbacks.onSingleTap()
+        }
       }
 
       this.state = 'idle'

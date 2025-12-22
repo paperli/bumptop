@@ -31,7 +31,16 @@ export function useGestures(options: UseGesturesOptions) {
     dragSmoothing = 0.3,
   } = options
 
-  const gestureInterpreter = useRef(new GestureInterpreter())
+  const gestureInterpreter = useRef(
+    new GestureInterpreter(undefined, {
+      onDoubleTap: () => {
+        if (onDoubleClick) {
+          console.log(`[Gesture] Double-tap detected on file ${fileId}`)
+          onDoubleClick()
+        }
+      },
+    })
+  )
   const velocityTracker = useRef(new PointerVelocityTracker())
   const dragStartPosition = useRef<Vector3 | null>(null)
   const targetPosition = useRef<Vector3 | null>(null) // Target position for smooth interpolation
