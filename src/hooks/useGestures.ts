@@ -10,6 +10,7 @@ import { Vector3, Plane, Raycaster } from 'three'
 import { GestureInterpreter } from '../input/GestureInterpreter'
 import { PointerVelocityTracker } from '../input/PointerVelocityTracker'
 import { useFileStore } from '../store/fileStore'
+import { useAppStore } from '../store/appStore'
 
 export interface UseGesturesOptions {
   rigidBodyRef: React.RefObject<RapierRigidBody>
@@ -37,6 +38,21 @@ export function useGestures(options: UseGesturesOptions) {
   const isDraggingStartedRef = useRef(false) // Track if we've started dragging motion
   const setDraggingFile = useFileStore((state) => state.setDraggingFile)
   const draggingFileId = useFileStore((state) => state.draggingFileId)
+  const settings = useAppStore((state) => state.settings)
+
+  // Helper function to clamp position within desk boundaries
+  const clampToBoundary = useCallback(
+    (x: number, z: number, margin = 0.05): { x: number; z: number } => {
+      const halfWidth = settings.deskWidth / 2 - margin
+      const halfHeight = settings.deskHeight / 2 - margin
+
+      return {
+        x: Math.max(-halfWidth, Math.min(halfWidth, x)),
+        z: Math.max(-halfHeight, Math.min(halfHeight, z)),
+      }
+    },
+    [settings.deskWidth, settings.deskHeight]
+  )
 
   const handlePointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
@@ -133,8 +149,19 @@ export function useGestures(options: UseGesturesOptions) {
           // Smooth interpolation (lerp) between current and target position
           // lerp factor: 0 = no movement, 1 = instant snap
           const lerpFactor = 1 - dragSmoothing
-          const newX = currentPos.x + (targetPosition.current.x - currentPos.x) * lerpFactor
-          const newZ = currentPos.z + (targetPosition.current.z - currentPos.z) * lerpFactor
+          let newX = currentPos.x + (targetPosition.current.x - currentPos.x) * lerpFactor
+          let newZ = currentPos.z + (targetPosition.current.z - currentPos.z) * lerpFactor
+
+          // CRITICAL: Clamp position to stay within desk boundaries
+          // Use 0.05m margin to keep files fully visible
+          const clamped = clampToBoundary(newX, newZ, 0.05)
+          const wasClamped = clamped.x !== newX || clamped.z !== newZ
+          newX = clamped.x
+          newZ = clamped.z
+
+          if (wasClamped) {
+            console.log(`[Drag] Position clamped to boundary: [${newX.toFixed(2)}, ${newZ.toFixed(2)}]`)
+          }
 
           // Update position
           rigidBodyRef.current.setTranslation(
