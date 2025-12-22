@@ -52,15 +52,17 @@ function BoundaryEnforcer({ fileRefs }: { fileRefs: React.MutableRefObject<Map<s
       }
 
       if (needsCorrection) {
-        // Clamp position and kill velocity in the clamped direction
+        // Clamp position and bounce back (invert velocity with damping)
         rigidBody.setTranslation({ x: newX, y: pos.y, z: newZ }, true)
 
         const vel = rigidBody.linvel()
-        const newVelX = pos.x !== newX ? 0 : vel.x
-        const newVelZ = pos.z !== newZ ? 0 : vel.z
+        // Instead of killing velocity, bounce it back with some energy loss
+        const bounceRestitution = 0.5 // 50% energy retained on boundary bounce
+        const newVelX = pos.x !== newX ? -vel.x * bounceRestitution : vel.x
+        const newVelZ = pos.z !== newZ ? -vel.z * bounceRestitution : vel.z
         rigidBody.setLinvel({ x: newVelX, y: vel.y, z: newVelZ }, true)
 
-        console.log(`[Boundary] Clamped file ${fileId} to bounds: [${newX.toFixed(2)}, ${newZ.toFixed(2)}]`)
+        console.log(`[Boundary] Bounced file ${fileId} at bounds: [${newX.toFixed(2)}, ${newZ.toFixed(2)}]`)
       }
     })
   })

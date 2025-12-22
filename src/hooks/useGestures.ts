@@ -261,7 +261,8 @@ export function useGestures(options: UseGesturesOptions) {
               }
 
               // Apply impulse (convert velocity to impulse by multiplying by mass estimate)
-              const mass = 0.5 // Estimate mass for file objects
+              // Higher mass = more momentum = longer throws
+              const mass = 0.8 // Estimate mass for file objects (increased from 0.5 for longer throws)
               const impulse = velocity.clone().multiplyScalar(mass)
 
               rigidBodyRef.current.applyImpulse(

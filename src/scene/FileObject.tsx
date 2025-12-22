@@ -50,8 +50,8 @@ export function FileObject({ file, position, onRefReady }: FileObjectProps) {
     rigidBodyRef,
     fileId: file.id, // Pass file ID to track which file is being dragged
     minThrowSpeed: 0.05, // Lower threshold for more responsive throwing
-    maxThrowSpeed: 3.0, // Lower max speed to keep files within boundaries
-    dragSmoothing: 0.2, // Lower = more responsive, higher = smoother (0-1)
+    maxThrowSpeed: 8.0, // Higher max speed for long distance throws (3.0 → 8.0)
+    dragSmoothing: 0.1, // More responsive tracking (0.2 → 0.1)
   })
 
   // Color based on hover state only

@@ -34,12 +34,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   deskWidth: 1.2, // meters
   deskHeight: 0.7, // meters
 
-  // Physics defaults - tuned for joyful, bouncy interactions
+  // Physics defaults - tuned for joyful, bouncy interactions with long throws
   gravity: -9.81,
-  restitution: 0.85, // High bounciness for playful interactions (0.6 → 0.85)
-  friction: 0.25, // Low friction for more sliding (0.5 → 0.25)
-  linearDamping: 0.15, // Less damping for longer movement (0.3 → 0.15)
-  angularDamping: 0.2, // Less rotation damping for more spin (0.4 → 0.2)
+  restitution: 0.85, // High bounciness for playful interactions
+  friction: 0.15, // Very low friction for smooth sliding (0.25 → 0.15)
+  linearDamping: 0.05, // Minimal damping for long distance throws (0.15 → 0.05)
+  angularDamping: 0.1, // Minimal rotation damping for natural spin (0.2 → 0.1)
 
   // Content object defaults
   defaultContentWidth: 0.45, // meters

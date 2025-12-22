@@ -12,8 +12,8 @@ interface PointerSample {
 
 export class PointerVelocityTracker {
   private samples: PointerSample[] = []
-  private maxSamples = 10 // Keep last 10 samples for better velocity calculation
-  private maxAge = 150 // Only consider samples from last 150ms
+  private maxSamples = 12 // Keep last 12 samples for better velocity calculation
+  private maxAge = 120 // Only consider samples from last 120ms (faster response)
 
   /**
    * Add a new pointer position sample
@@ -62,9 +62,10 @@ export class PointerVelocityTracker {
         const deltaPosition = curr.position.clone().sub(prev.position)
         const velocity = deltaPosition.divideScalar(deltaTime)
 
-        // Weight more recent samples higher (exponential decay)
+        // Weight more recent samples MUCH higher (exponential decay)
+        // This captures the final flick motion better
         const age = now - curr.timestamp
-        const weight = Math.exp(-age / 50) // 50ms decay constant
+        const weight = Math.exp(-age / 30) // 30ms decay constant (faster decay = recent samples dominate)
 
         velocities.push(velocity)
         weights.push(weight)
