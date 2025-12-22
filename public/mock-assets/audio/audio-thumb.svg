@@ -1,0 +1,11 @@
+<svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
+  <rect width="256" height="256" fill="#805ad5"/>
+  <circle cx="80" cy="128" r="8" fill="white"/>
+  <rect x="92" y="120" width="8" height="16" fill="white"/>
+  <rect x="108" y="100" width="8" height="56" fill="white"/>
+  <rect x="124" y="80" width="8" height="96" fill="white"/>
+  <rect x="140" y="100" width="8" height="56" fill="white"/>
+  <rect x="156" y="120" width="8" height="16" fill="white"/>
+  <circle cx="176" cy="128" r="8" fill="white"/>
+  <text x="128" y="220" text-anchor="middle" font-family="Arial" font-size="20" fill="white">AUDIO</text>
+</svg>

@@ -2,19 +2,57 @@
  * Simulated Mode Component
  * Renders a 3D scene without WebXR (fallback mode for non-AR devices)
  * Phase 2: Added Rapier physics engine
+ * Phase 3: Added file objects with MockProvider
  */
 
+import { useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import { DeskBoundary } from '../scene/DeskBoundary'
-import { TestCube } from '../scene/TestCube'
+import { FileObject } from '../scene/FileObject'
 import { useAppStore } from '../store/appStore'
+import { useFileStore } from '../store/fileStore'
 import { getPhysicsWorldConfig } from '../utils/physicsConfig'
+import { MockProvider } from '../fs/MockProvider'
 
 export function SimulatedMode() {
   const settings = useAppStore((state) => state.settings)
   const physicsConfig = getPhysicsWorldConfig(settings)
+  const { files, setProvider, loadFiles } = useFileStore()
+
+  // Initialize MockProvider and load files on mount
+  useEffect(() => {
+    const provider = new MockProvider()
+    setProvider(provider)
+    loadFiles()
+  }, [setProvider, loadFiles])
+
+  // Calculate grid positions for files
+  const getFilePositions = () => {
+    const positions: Array<[number, number, number]> = []
+    const deskWidth = settings.deskWidth
+    const deskHeight = settings.deskHeight
+    const fileSize = 0.08
+    const spacing = 0.12 // 12cm between files
+    const cols = Math.floor(deskWidth / spacing)
+    const rows = Math.floor(deskHeight / spacing)
+
+    let fileIndex = 0
+    for (let row = 0; row < rows && fileIndex < files.length; row++) {
+      for (let col = 0; col < cols && fileIndex < files.length; col++) {
+        const x = (col - cols / 2) * spacing + spacing / 2
+        const z = (row - rows / 2) * spacing + spacing / 2
+        const y = 0.2 // Start slightly above desk
+        positions.push([x, y, z])
+        fileIndex++
+      }
+    }
+
+    return positions
+  }
+
+  const filePositions = getFilePositions()
 
   return (
     <Canvas
@@ -50,8 +88,10 @@ export function SimulatedMode() {
         {/* Scene with physics */}
         <DeskBoundary />
 
-        {/* Test cube to verify physics (Phase 2) */}
-        <TestCube />
+        {/* File objects (Phase 3) */}
+        {files.map((file, index) => (
+          <FileObject key={file.id} file={file} position={filePositions[index]} />
+        ))}
       </Physics>
 
       {/* Controls for simulated mode */}
