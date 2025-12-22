@@ -4,7 +4,7 @@
  * Phase 3: Basic version with selection
  */
 
-import { useRef, useState, Suspense } from 'react'
+import { useRef, useState, useEffect, Suspense } from 'react'
 import { RigidBody, RapierRigidBody } from '@react-three/rapier'
 import { Text, useTexture } from '@react-three/drei'
 import { FileEntry } from '../types'
@@ -16,15 +16,28 @@ import { useGestures } from '../hooks/useGestures'
 interface FileObjectProps {
   file: FileEntry
   position: [number, number, number]
+  onRefReady?: (fileId: string, ref: RapierRigidBody | null) => void
 }
 
-export function FileObject({ file, position }: FileObjectProps) {
+export function FileObject({ file, position, onRefReady }: FileObjectProps) {
   const settings = useAppStore((state) => state.settings)
   const rigidBodyRef = useRef<RapierRigidBody>(null)
   const [isHovered, setIsHovered] = useState(false)
 
   const material = getPhysicsMaterial(settings)
   const damping = getDampingConfig(settings)
+
+  // Register rigid body ref when ready
+  useEffect(() => {
+    if (onRefReady && rigidBodyRef.current) {
+      onRefReady(file.id, rigidBodyRef.current)
+    }
+    return () => {
+      if (onRefReady) {
+        onRefReady(file.id, null)
+      }
+    }
+  }, [file.id, onRefReady])
 
   // Load thumbnail texture
   const texture = useTexture(file.thumbnailUrl || '/mock-assets/images/placeholder-1.png')
@@ -58,7 +71,6 @@ export function FileObject({ file, position }: FileObjectProps) {
       linearDamping={damping.linear}
       angularDamping={damping.angular}
       ccd={true}
-      collisionGroups={0xFFFF0003} // Default: collide with boundaries and other files
     >
       <group>
         {/* File box with thumbnail on top */}

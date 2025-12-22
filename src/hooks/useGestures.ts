@@ -89,12 +89,7 @@ export function useGestures(options: UseGesturesOptions) {
 
         // Switch to kinematic mode for dragging
         rigidBodyRef.current.setBodyType(1, true) // 1 = kinematic
-
-        // Disable collisions with other files during drag to prevent pushing them over boundaries
-        // Collision groups: 0xFFFF (member of all groups), 0x0001 (only collide with group 0: boundaries/desk)
-        // This makes the dragged file "ghost through" other files
-        rigidBodyRef.current.setCollisionGroups(0x00020002) // Group 2 membership, Group 2 filter (isolated)
-        console.log(`[Drag] Disabled file-file collisions for ${fileId}`)
+        // Keep collisions enabled - files should push each other realistically
       }
 
       // Clear velocity tracker to start fresh
@@ -228,11 +223,6 @@ export function useGestures(options: UseGesturesOptions) {
         // Switch back to dynamic mode
         rigidBodyRef.current.setBodyType(0, true) // 0 = dynamic
 
-        // Re-enable collisions with other files
-        // 0xFFFF0001 = member of all groups, collide with group 0 (boundaries) and group 1 (files)
-        rigidBodyRef.current.setCollisionGroups(0xFFFF0003) // Default: collide with everything
-        console.log(`[Drag] Re-enabled file-file collisions for ${fileId}`)
-
         // If was dragging, apply throw impulse
         if (wasDragging) {
           const hasEnoughSamples = velocityTracker.current.hasEnoughSamples()
@@ -328,9 +318,6 @@ export function useGestures(options: UseGesturesOptions) {
     // Switch back to dynamic mode
     if (rigidBodyRef.current) {
       rigidBodyRef.current.setBodyType(0, true)
-      // Re-enable collisions
-      rigidBodyRef.current.setCollisionGroups(0xFFFF0003)
-      console.log(`[Drag] Re-enabled collisions (cancel) for ${fileId}`)
     }
 
     velocityTracker.current.clear()
@@ -366,9 +353,6 @@ export function useGestures(options: UseGesturesOptions) {
       // Switch back to dynamic mode
       if (rigidBodyRef.current) {
         rigidBodyRef.current.setBodyType(0, true)
-        // Re-enable collisions
-        rigidBodyRef.current.setCollisionGroups(0xFFFF0003)
-        console.log(`[Drag] Re-enabled collisions (leave) for ${fileId}`)
       }
 
       velocityTracker.current.clear()

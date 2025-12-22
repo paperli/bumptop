@@ -5,10 +5,10 @@
  * Phase 3: Added file objects with MockProvider
  */
 
-import { useEffect } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { useEffect, useRef } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { Physics } from '@react-three/rapier'
+import { Physics, RapierRigidBody } from '@react-three/rapier'
 import { DeskBoundary } from '../scene/DeskBoundary'
 import { FileObject } from '../scene/FileObject'
 import { useAppStore } from '../store/appStore'
@@ -16,10 +16,63 @@ import { useFileStore } from '../store/fileStore'
 import { getPhysicsWorldConfig } from '../utils/physicsConfig'
 import { MockProvider } from '../fs/MockProvider'
 
+// Component that monitors and constrains all file positions
+function BoundaryEnforcer({ fileRefs }: { fileRefs: React.MutableRefObject<Map<string, RapierRigidBody>> }) {
+  const settings = useAppStore((state) => state.settings)
+
+  useFrame(() => {
+    const halfWidth = settings.deskWidth / 2
+    const halfHeight = settings.deskHeight / 2
+    const margin = 0.04 // 4cm safety margin
+
+    fileRefs.current.forEach((rigidBody, fileId) => {
+      if (!rigidBody) return
+
+      const pos = rigidBody.translation()
+      let needsCorrection = false
+      let newX = pos.x
+      let newZ = pos.z
+
+      // Check X bounds
+      if (pos.x < -halfWidth + margin) {
+        newX = -halfWidth + margin
+        needsCorrection = true
+      } else if (pos.x > halfWidth - margin) {
+        newX = halfWidth - margin
+        needsCorrection = true
+      }
+
+      // Check Z bounds
+      if (pos.z < -halfHeight + margin) {
+        newZ = -halfHeight + margin
+        needsCorrection = true
+      } else if (pos.z > halfHeight - margin) {
+        newZ = halfHeight - margin
+        needsCorrection = true
+      }
+
+      if (needsCorrection) {
+        // Clamp position and kill velocity in the clamped direction
+        rigidBody.setTranslation({ x: newX, y: pos.y, z: newZ }, true)
+
+        const vel = rigidBody.linvel()
+        const newVelX = pos.x !== newX ? 0 : vel.x
+        const newVelZ = pos.z !== newZ ? 0 : vel.z
+        rigidBody.setLinvel({ x: newVelX, y: vel.y, z: newVelZ }, true)
+
+        console.log(`[Boundary] Clamped file ${fileId} to bounds: [${newX.toFixed(2)}, ${newZ.toFixed(2)}]`)
+      }
+    })
+  })
+
+  return null
+}
+
 export function SimulatedMode() {
   const settings = useAppStore((state) => state.settings)
   const physicsConfig = getPhysicsWorldConfig(settings)
   const { files, setProvider, loadFiles, isDraggingFile } = useFileStore()
+  const fileRefs = useRef<Map<string, RapierRigidBody>>(new Map())
 
   // Initialize MockProvider and load files on mount
   useEffect(() => {
@@ -90,8 +143,22 @@ export function SimulatedMode() {
 
         {/* File objects (Phase 3) */}
         {files.map((file, index) => (
-          <FileObject key={file.id} file={file} position={filePositions[index]} />
+          <FileObject
+            key={file.id}
+            file={file}
+            position={filePositions[index]}
+            onRefReady={(fileId, ref) => {
+              if (ref) {
+                fileRefs.current.set(fileId, ref)
+              } else {
+                fileRefs.current.delete(fileId)
+              }
+            }}
+          />
         ))}
+
+        {/* Boundary enforcer - continuously monitors all file positions */}
+        <BoundaryEnforcer fileRefs={fileRefs} />
       </Physics>
 
       {/* Controls for simulated mode */}

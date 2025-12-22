@@ -64,8 +64,8 @@ export function getDampingConfig(settings: AppSettings): DampingConfig {
  * Constants for physics simulation
  */
 export const PHYSICS_CONSTANTS = {
-  // Boundary wall height (tall enough to contain thrown objects)
-  WALL_HEIGHT: 1.0, // meters (increased from 0.5m to prevent escape)
+  // Boundary wall height (high container walls to contain all objects)
+  WALL_HEIGHT: 2.5, // meters (tall container walls to prevent any escape)
 
   // Boundary wall thickness
   WALL_THICKNESS: 0.05, // meters (5cm)
