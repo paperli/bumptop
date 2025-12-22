@@ -38,6 +38,10 @@ export function useGestures(options: UseGesturesOptions) {
       const { pointerId, clientX, clientY } = event.nativeEvent
       gestureInterpreter.current.onPointerDown(pointerId, clientX, clientY)
 
+      // Disable OrbitControls immediately to prevent viewport movement
+      setDraggingFile(true)
+      console.log('Pointer down - OrbitControls disabled')
+
       // Store starting position for drag
       if (rigidBodyRef.current) {
         const pos = rigidBodyRef.current.translation()
@@ -49,40 +53,37 @@ export function useGestures(options: UseGesturesOptions) {
 
       velocityTracker.current.clear()
     },
-    [rigidBodyRef]
+    [rigidBodyRef, setDraggingFile]
   )
 
   const handlePointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       const { pointerId, clientX, clientY } = event.nativeEvent
-      const wasDragging = gestureInterpreter.current.isDraggingGesture()
 
       gestureInterpreter.current.onPointerMove(pointerId, clientX, clientY)
 
-      // Check if dragging just started
-      const isDragging = gestureInterpreter.current.isDraggingGesture()
-      if (!wasDragging && isDragging) {
-        setDraggingFile(true)
-        console.log('Drag started - OrbitControls disabled')
-      }
-
-      // If dragging, update position
-      if (isDragging && rigidBodyRef.current) {
+      // Always update position and track velocity while pointer is down
+      if (rigidBodyRef.current) {
         // Get world position from pointer
         const worldPos = event.point
 
-        // Track velocity
+        // Track velocity for throw detection
         velocityTracker.current.addSample(worldPos)
 
-        // Move object to pointer position (keep Y axis)
-        const currentPos = rigidBodyRef.current.translation()
-        rigidBodyRef.current.setTranslation(
-          { x: worldPos.x, y: currentPos.y, z: worldPos.z },
-          true
-        )
+        // Check if we've moved enough to start dragging (8px threshold)
+        const isDragging = gestureInterpreter.current.isDraggingGesture()
+
+        if (isDragging) {
+          // Move object to pointer position (keep Y axis)
+          const currentPos = rigidBodyRef.current.translation()
+          rigidBodyRef.current.setTranslation(
+            { x: worldPos.x, y: currentPos.y, z: worldPos.z },
+            true
+          )
+        }
       }
     },
-    [rigidBodyRef, setDraggingFile]
+    [rigidBodyRef]
   )
 
   const handlePointerUp = useCallback(
@@ -105,27 +106,39 @@ export function useGestures(options: UseGesturesOptions) {
         rigidBodyRef.current.setBodyType(0, true) // 0 = dynamic
 
         // If was dragging, apply throw impulse
-        if (wasDragging && velocityTracker.current.hasEnoughSamples()) {
-          const velocity = velocityTracker.current.getVelocity()
-          const speed = velocity.length()
+        if (wasDragging) {
+          const hasEnoughSamples = velocityTracker.current.hasEnoughSamples()
+          console.log(`Drag ended - has enough samples: ${hasEnoughSamples}`)
 
-          // Only apply impulse if speed is above minimum
-          if (speed > minThrowSpeed) {
-            // Clamp velocity to max throw speed
-            if (speed > maxThrowSpeed) {
-              velocity.normalize().multiplyScalar(maxThrowSpeed)
+          if (hasEnoughSamples) {
+            const velocity = velocityTracker.current.getVelocity()
+            const speed = velocity.length()
+
+            console.log(`Velocity: x=${velocity.x.toFixed(2)}, y=${velocity.y.toFixed(2)}, z=${velocity.z.toFixed(2)}, speed=${speed.toFixed(2)} m/s`)
+
+            // Only apply impulse if speed is above minimum
+            if (speed > minThrowSpeed) {
+              // Clamp velocity to max throw speed
+              if (speed > maxThrowSpeed) {
+                velocity.normalize().multiplyScalar(maxThrowSpeed)
+                console.log(`Velocity clamped to max: ${maxThrowSpeed} m/s`)
+              }
+
+              // Apply impulse (convert velocity to impulse by multiplying by mass estimate)
+              const mass = 0.5 // Estimate mass for file objects
+              const impulse = velocity.multiplyScalar(mass)
+
+              rigidBodyRef.current.applyImpulse(
+                { x: impulse.x, y: impulse.y, z: impulse.z },
+                true
+              )
+
+              console.log(`✓ Throw impulse applied: speed=${speed.toFixed(2)} m/s, impulse=[${impulse.x.toFixed(2)}, ${impulse.y.toFixed(2)}, ${impulse.z.toFixed(2)}]`)
+            } else {
+              console.log(`Speed too low (${speed.toFixed(2)} < ${minThrowSpeed}), no throw`)
             }
-
-            // Apply impulse (convert velocity to impulse by multiplying by mass estimate)
-            const mass = 0.5 // Estimate mass for file objects
-            const impulse = velocity.multiplyScalar(mass)
-
-            rigidBodyRef.current.applyImpulse(
-              { x: impulse.x, y: impulse.y, z: impulse.z },
-              true
-            )
-
-            console.log(`Throw impulse applied: speed=${speed.toFixed(2)} m/s`)
+          } else {
+            console.log('Not enough velocity samples for throw')
           }
         }
         // Single tap without drag -> just log (no selection)
@@ -157,6 +170,28 @@ export function useGestures(options: UseGesturesOptions) {
     dragStartPosition.current = null
   }, [rigidBodyRef, setDraggingFile])
 
+  const handlePointerLeave = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      const { pointerId } = event.nativeEvent
+
+      // Treat pointer leaving as a cancel event
+      gestureInterpreter.current.onPointerCancel(pointerId)
+
+      // Re-enable OrbitControls
+      setDraggingFile(false)
+      console.log('Pointer left canvas - OrbitControls enabled, cleaning up')
+
+      // Switch back to dynamic mode
+      if (rigidBodyRef.current) {
+        rigidBodyRef.current.setBodyType(0, true)
+      }
+
+      velocityTracker.current.clear()
+      dragStartPosition.current = null
+    },
+    [rigidBodyRef, setDraggingFile]
+  )
+
   const handleWheel = useCallback(
     (event: ThreeEvent<WheelEvent>) => {
       event.stopPropagation()
@@ -174,6 +209,7 @@ export function useGestures(options: UseGesturesOptions) {
       onPointerMove: handlePointerMove,
       onPointerUp: handlePointerUp,
       onPointerCancel: handlePointerCancel,
+      onPointerLeave: handlePointerLeave,
       onWheel: handleWheel,
     },
   }
