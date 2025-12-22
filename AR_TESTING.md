@@ -45,25 +45,39 @@ Forwarding  https://abc123.ngrok.app -> http://localhost:5173
 
 ## Troubleshooting
 
-### "Enter AR" button doesn't appear
+> **📘 For detailed troubleshooting and common issues, see [TROUBLESHOOTING_AR.md](./TROUBLESHOOTING_AR.md)**
+
+### Quick Fixes
+
+#### "Enter AR" button doesn't appear
 - Check browser console for WebXR support:
   ```javascript
   navigator.xr ? 'WebXR available' : 'WebXR not available'
   ```
 - Make sure you're accessing via HTTPS (ngrok URL)
 - Update browser to latest version
+- Check **Settings panel** → WebXR Debug Info section
 
-### Camera permission denied
+#### Camera permission denied
 - Go to browser settings → Site permissions
 - Allow camera access for the ngrok domain
 - Refresh the page
 
-### AR session fails to start
+#### "Failed to enter AR: not connected to three.js" error
+**This is the most common error.** See [TROUBLESHOOTING_AR.md](./TROUBLESHOOTING_AR.md) for detailed explanation.
+
+Quick check:
+- Verify Canvas in ARMode.tsx does NOT have `events` prop
+- Ensure XR store is passed correctly to `<XR store={xrStore}>` component
+- Wait for "Start AR Session" button to enable (gives Canvas time to initialize)
+
+#### AR session fails to start
 - Check console logs for error messages
 - Ensure good lighting conditions
 - Try restarting the browser
+- Check WebXR Debug Info in Settings panel
 
-### ngrok tunnel expires (free tier)
+#### ngrok tunnel expires (free tier)
 - Free ngrok sessions expire after 2 hours
 - Restart with `npm run dev:tunnel`
 - Consider signing up for free ngrok account for longer sessions
