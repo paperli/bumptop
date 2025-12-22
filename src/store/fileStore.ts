@@ -22,6 +22,7 @@ interface FileState {
 
   // Dragging state (to disable OrbitControls during drag)
   isDraggingFile: boolean
+  draggingFileId: string | null // Track which specific file is being dragged
 
   // Actions
   setProvider: (provider: FileSystemProvider) => void
@@ -31,7 +32,7 @@ interface FileState {
   toggleFileSelection: (fileId: string) => void
   clearSelection: () => void
   isFileSelected: (fileId: string) => boolean
-  setDraggingFile: (isDragging: boolean) => void
+  setDraggingFile: (isDragging: boolean, fileId?: string | null) => void
 }
 
 export const useFileStore = create<FileState>((set, get) => ({
@@ -41,6 +42,7 @@ export const useFileStore = create<FileState>((set, get) => ({
   isLoading: false,
   error: null,
   isDraggingFile: false,
+  draggingFileId: null,
 
   setProvider: (provider) => {
     set({ provider })
@@ -101,7 +103,8 @@ export const useFileStore = create<FileState>((set, get) => ({
     return get().selectedFileIds.has(fileId)
   },
 
-  setDraggingFile: (isDragging) => {
-    set({ isDraggingFile: isDragging })
+  setDraggingFile: (isDragging, fileId = null) => {
+    set({ isDraggingFile: isDragging, draggingFileId: isDragging ? fileId : null })
+    console.log(`setDraggingFile: isDragging=${isDragging}, fileId=${fileId}`)
   },
 }))

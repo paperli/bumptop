@@ -13,6 +13,7 @@ import { useFileStore } from '../store/fileStore'
 
 export interface UseGesturesOptions {
   rigidBodyRef: React.RefObject<RapierRigidBody>
+  fileId: string // Required to track which file is being dragged
   onDoubleClick?: () => void
   minThrowSpeed?: number
   maxThrowSpeed?: number
@@ -22,6 +23,7 @@ export interface UseGesturesOptions {
 export function useGestures(options: UseGesturesOptions) {
   const {
     rigidBodyRef,
+    fileId,
     onDoubleClick,
     minThrowSpeed = 0.1,
     maxThrowSpeed = 5.0,
@@ -33,10 +35,17 @@ export function useGestures(options: UseGesturesOptions) {
   const dragStartPosition = useRef<Vector3 | null>(null)
   const targetPosition = useRef<Vector3 | null>(null) // Target position for smooth interpolation
   const setDraggingFile = useFileStore((state) => state.setDraggingFile)
+  const draggingFileId = useFileStore((state) => state.draggingFileId)
 
   const handlePointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+
+      // Ignore if another file is already being dragged
+      if (draggingFileId !== null && draggingFileId !== fileId) {
+        console.log(`Pointer down on file ${fileId} ignored - file ${draggingFileId} is being dragged`)
+        return
+      }
 
       const { pointerId, clientX, clientY } = event.nativeEvent
       gestureInterpreter.current.onPointerDown(pointerId, clientX, clientY)
@@ -53,8 +62,8 @@ export function useGestures(options: UseGesturesOptions) {
       }
 
       // Also disable OrbitControls via state (backup mechanism)
-      setDraggingFile(true)
-      console.log('Pointer down - OrbitControls disabled')
+      setDraggingFile(true, fileId)
+      console.log(`Pointer down on file ${fileId} - OrbitControls disabled`)
 
       // Store starting position for drag
       if (rigidBodyRef.current) {
@@ -67,11 +76,16 @@ export function useGestures(options: UseGesturesOptions) {
 
       velocityTracker.current.clear()
     },
-    [rigidBodyRef, setDraggingFile]
+    [rigidBodyRef, setDraggingFile, draggingFileId, fileId]
   )
 
   const handlePointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
+      // Only process if this file is the one being dragged
+      if (draggingFileId !== null && draggingFileId !== fileId) {
+        return
+      }
+
       const { pointerId, clientX, clientY } = event.nativeEvent
 
       gestureInterpreter.current.onPointerMove(pointerId, clientX, clientY)
@@ -106,12 +120,17 @@ export function useGestures(options: UseGesturesOptions) {
         }
       }
     },
-    [rigidBodyRef, dragSmoothing]
+    [rigidBodyRef, dragSmoothing, draggingFileId, fileId]
   )
 
   const handlePointerUp = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+
+      // Only process if this file is the one being dragged
+      if (draggingFileId !== null && draggingFileId !== fileId) {
+        return
+      }
 
       const { pointerId } = event.nativeEvent
       const wasDragging = gestureInterpreter.current.isDraggingGesture()
@@ -184,10 +203,15 @@ export function useGestures(options: UseGesturesOptions) {
       dragStartPosition.current = null
       targetPosition.current = null
     },
-    [rigidBodyRef, minThrowSpeed, maxThrowSpeed, setDraggingFile]
+    [rigidBodyRef, minThrowSpeed, maxThrowSpeed, setDraggingFile, draggingFileId, fileId]
   )
 
   const handlePointerCancel = useCallback((event: ThreeEvent<PointerEvent>) => {
+    // Only process if this file is the one being dragged
+    if (draggingFileId !== null && draggingFileId !== fileId) {
+      return
+    }
+
     const { pointerId } = event.nativeEvent
     gestureInterpreter.current.onPointerCancel(pointerId)
 
@@ -212,10 +236,15 @@ export function useGestures(options: UseGesturesOptions) {
     velocityTracker.current.clear()
     dragStartPosition.current = null
     targetPosition.current = null
-  }, [rigidBodyRef, setDraggingFile])
+  }, [rigidBodyRef, setDraggingFile, draggingFileId, fileId])
 
   const handlePointerLeave = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
+      // Only process if this file is the one being dragged
+      if (draggingFileId !== null && draggingFileId !== fileId) {
+        return
+      }
+
       const { pointerId } = event.nativeEvent
 
       // Treat pointer leaving as a cancel event
@@ -243,7 +272,7 @@ export function useGestures(options: UseGesturesOptions) {
       dragStartPosition.current = null
       targetPosition.current = null
     },
-    [rigidBodyRef, setDraggingFile]
+    [rigidBodyRef, setDraggingFile, draggingFileId, fileId]
   )
 
   const handleWheel = useCallback(
