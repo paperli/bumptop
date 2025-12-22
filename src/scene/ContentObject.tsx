@@ -72,10 +72,43 @@ export function ContentObject({ content, onRefReady }: ContentObjectProps) {
     if (content.isLoading) {
       console.log(`[ContentObject] Showing loading state (gray panel)`)
       return (
-        <mesh>
-          <planeGeometry args={[panelWidth, panelHeight]} />
-          <meshStandardMaterial color="#333333" />
-        </mesh>
+        <>
+          <mesh>
+            <planeGeometry args={[panelWidth, panelHeight]} />
+            <meshStandardMaterial color="#333333" />
+          </mesh>
+          {/* Loading spinner overlay */}
+          <Html position={[0, 0, 0.01]} center>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <div
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  border: '3px solid rgba(255, 255, 255, 0.2)',
+                  borderTop: '3px solid #00d4ff',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                }}
+              />
+              <div
+                style={{
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  fontFamily: 'Arial, sans-serif',
+                  textShadow: '0 0 4px black',
+                }}
+              >
+                Loading...
+              </div>
+            </div>
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
+          </Html>
+        </>
       )
     }
 
@@ -91,7 +124,7 @@ export function ContentObject({ content, onRefReady }: ContentObjectProps) {
 
     switch (content.fileEntry.kind) {
       case 'image':
-        return <ImagePreview contentUrl={content.contentUrl} width={panelWidth} height={panelHeight} />
+        return <ImagePreview contentUrl={content.contentUrl} width={panelWidth} height={panelHeight} mimeType={content.fileEntry.mimeType} />
       case 'video':
         return <VideoPreview contentUrl={content.contentUrl} width={panelWidth} height={panelHeight} />
       case 'audio':

@@ -126,10 +126,9 @@ export function VideoPreview({ contentUrl, width, height }: VideoPreviewProps) {
       {/* Video plane */}
       <mesh>
         <planeGeometry args={[displayWidth, displayHeight]} />
-        <meshStandardMaterial
+        <meshBasicMaterial
           map={videoTexture}
-          roughness={0.3}
-          metalness={0.1}
+          toneMapped={false}
         />
       </mesh>
 

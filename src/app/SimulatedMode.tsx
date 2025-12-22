@@ -16,6 +16,7 @@ import { useAppStore } from '../store/appStore'
 import { useFileStore } from '../store/fileStore'
 import { useContentStore } from '../store/contentStore'
 import { useDraggableStore } from '../store/draggableStore'
+import { useAuthStore } from '../store/authStore'
 import { getPhysicsWorldConfig } from '../utils/physicsConfig'
 import { MockProvider } from '../fs/MockProvider'
 
@@ -72,8 +73,6 @@ function BoundaryEnforcer({
         const newVelX = pos.x !== newX ? -vel.x * bounceRestitution : vel.x
         const newVelZ = pos.z !== newZ ? -vel.z * bounceRestitution : vel.z
         rigidBody.setLinvel({ x: newVelX, y: vel.y, z: newVelZ }, true)
-
-        console.log(`[Boundary] Bounced file ${fileId} at bounds: [${newX.toFixed(2)}, ${newZ.toFixed(2)}]`)
       }
     })
 
@@ -113,8 +112,6 @@ function BoundaryEnforcer({
         const newVelX = pos.x !== newX ? -vel.x * bounceRestitution : vel.x
         const newVelZ = pos.z !== newZ ? -vel.z * bounceRestitution : vel.z
         rigidBody.setLinvel({ x: newVelX, y: vel.y, z: newVelZ }, true)
-
-        console.log(`[Boundary] Bounced content ${contentId} at bounds: [${newX.toFixed(2)}, ${newZ.toFixed(2)}]`)
       }
     })
   })
@@ -131,14 +128,26 @@ export function SimulatedMode() {
   const fileRefs = useRef<Map<string, RapierRigidBody>>(new Map())
   const contentRefs = useRef<Map<string, RapierRigidBody>>(new Map())
 
-  // Initialize MockProvider and load files on mount
+  // Initialize MockProvider and load files on mount (only if no provider exists)
   useEffect(() => {
-    const provider = new MockProvider()
-    setProvider(provider)
-    loadFiles()
+    // Only initialize MockProvider if no provider is set AND not authenticated
+    // This prevents overwriting DropboxProvider when switching
+    const { provider } = useFileStore.getState()
+    const { isAuthenticated } = useAuthStore.getState()
 
-    // Debug: Log loaded files
-    setTimeout(() => {
+    if (!provider && !isAuthenticated) {
+      console.log('[SimulatedMode] No provider found, initializing MockProvider')
+      const mockProvider = new MockProvider()
+      setProvider(mockProvider)
+      loadFiles()
+    } else if (isAuthenticated && !provider) {
+      console.log('[SimulatedMode] Waiting for Dropbox provider to be restored...')
+    }
+  }, []) // Empty dependency array - only run once on mount
+
+  // Debug: Log loaded files when they change
+  useEffect(() => {
+    if (files.length > 0) {
       console.log('[SimulatedMode] Files loaded:', files.length)
       console.log('[SimulatedMode] File types:', {
         images: files.filter(f => f.kind === 'image').length,
@@ -146,8 +155,8 @@ export function SimulatedMode() {
         audio: files.filter(f => f.kind === 'audio').length,
         text: files.filter(f => f.kind === 'text').length,
       })
-    }, 1000)
-  }, [setProvider, loadFiles, files])
+    }
+  }, [files])
 
   // Calculate grid positions for files
   const getFilePositions = () => {
