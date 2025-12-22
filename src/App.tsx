@@ -3,17 +3,27 @@
  * Phase 1: Mode detection and basic 3D scene
  */
 
+import { useMemo } from 'react'
+import { createXRStore } from '@react-three/xr'
 import { ModeDetector } from './app/ModeDetector'
 import { ModeLabel } from './app/ModeLabel'
 import { ARModeButton } from './app/ARModeButton'
+import { ExitARButton } from './app/ExitARButton'
+import { StartARButton } from './app/StartARButton'
 import { Settings } from './app/Settings'
 import { ControlsHint } from './app/ControlsHint'
+import { ProviderSelector } from './app/ProviderSelector'
 import { SimulatedMode } from './app/SimulatedMode'
+import { ARMode } from './app/ARMode'
 import { useAppStore } from './store/appStore'
 import './App.css'
 
 function App() {
   const mode = useAppStore((state) => state.mode)
+  const isARSessionActive = useAppStore((state) => state.isARSessionActive)
+
+  // Create XR store (memoized to prevent recreation)
+  const xrStore = useMemo(() => createXRStore(), [])
 
   return (
     <div className="App">
@@ -23,20 +33,17 @@ function App() {
       {/* UI Overlays */}
       <ModeLabel />
       <ARModeButton />
+      <ExitARButton />
       <Settings />
-      <ControlsHint />
+      {/* <ControlsHint /> Hidden to avoid blocking AR button on mobile */}
+      <ProviderSelector />
+
+      {/* Start AR Button - shows when in AR mode but session not started */}
+      {mode === 'ar' && !isARSessionActive && <StartARButton store={xrStore} />}
 
       {/* 3D Scene */}
       {mode === 'simulated' && <SimulatedMode />}
-      {mode === 'ar' && (
-        <div className="ar-placeholder">
-          <h2>AR Mode</h2>
-          <p>AR session will be implemented in Phase 5</p>
-          <button onClick={() => useAppStore.getState().setMode('simulated')}>
-            Exit AR (Back to Simulated)
-          </button>
-        </div>
-      )}
+      {mode === 'ar' && <ARMode store={xrStore} />}
     </div>
   )
 }

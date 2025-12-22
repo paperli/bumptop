@@ -17,9 +17,8 @@ export function ARModeButton() {
   }
 
   const handleEnterAR = () => {
-    console.log('Enter AR button clicked')
-    // For now, just update the mode
-    // In Phase 5, we'll actually start the XR session
+    console.log('[ARModeButton] Enter AR button clicked, switching to AR mode...')
+    // Switch to AR mode - ARMode component will handle XR session request
     setMode('ar')
   }
 

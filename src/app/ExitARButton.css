@@ -1,0 +1,31 @@
+.exit-ar-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+
+  padding: 12px 24px;
+  background: rgba(255, 59, 48, 0.9);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+
+  transition: all 0.2s ease;
+}
+
+.exit-ar-button:hover {
+  background: rgba(255, 59, 48, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.exit-ar-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}

@@ -101,34 +101,5 @@ export interface PointerInfo {
 // ============================================================================
 // WebXR
 // ============================================================================
-
-declare global {
-  interface Navigator {
-    xr?: XRSystem
-  }
-
-  interface XRSystem {
-    isSessionSupported(mode: XRSessionMode): Promise<boolean>
-    requestSession(mode: XRSessionMode, options?: XRSessionInit): Promise<XRSession>
-  }
-
-  type XRSessionMode = 'inline' | 'immersive-vr' | 'immersive-ar'
-
-  interface XRSessionInit {
-    requiredFeatures?: string[]
-    optionalFeatures?: string[]
-  }
-
-  interface XRSession extends EventTarget {
-    end(): Promise<void>
-    requestReferenceSpace(type: XRReferenceSpaceType): Promise<XRReferenceSpace>
-  }
-
-  type XRReferenceSpaceType = 'viewer' | 'local' | 'local-floor' | 'bounded-floor' | 'unbounded'
-
-  interface XRReferenceSpace extends EventTarget {
-    // Reference space interface
-  }
-}
-
-export {}
+// WebXR types are provided by the browser and @react-three/xr
+// No need to declare them here to avoid duplicate identifiers
