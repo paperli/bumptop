@@ -136,7 +136,18 @@ export function SimulatedMode() {
     const provider = new MockProvider()
     setProvider(provider)
     loadFiles()
-  }, [setProvider, loadFiles])
+
+    // Debug: Log loaded files
+    setTimeout(() => {
+      console.log('[SimulatedMode] Files loaded:', files.length)
+      console.log('[SimulatedMode] File types:', {
+        images: files.filter(f => f.kind === 'image').length,
+        videos: files.filter(f => f.kind === 'video').length,
+        audio: files.filter(f => f.kind === 'audio').length,
+        text: files.filter(f => f.kind === 'text').length,
+      })
+    }, 1000)
+  }, [setProvider, loadFiles, files])
 
   // Calculate grid positions for files
   const getFilePositions = () => {
