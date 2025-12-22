@@ -1,0 +1,15 @@
+Welcome to BumpTop!
+
+This is a sample text file that demonstrates text preview functionality.
+
+BumpTop is a WebXR-first AR/XR web app that renders files as interactive 3D objects on a virtual desktop aligned to your real-world desk.
+
+Features:
+- Drag, throw, and scale file objects
+- Physics-based interactions
+- AR mode (WebXR-enabled Android)
+- Simulated mode (non-WebXR browsers)
+- File preview (images, videos, audio, text)
+- Dropbox integration (coming soon)
+
+Enjoy exploring your files in 3D!

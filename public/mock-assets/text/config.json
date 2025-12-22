@@ -1,0 +1,37 @@
+{
+  "app": {
+    "name": "BumpTop",
+    "version": "0.1.0",
+    "mode": "development"
+  },
+  "desk": {
+    "width": 1.2,
+    "height": 0.7,
+    "units": "meters"
+  },
+  "physics": {
+    "gravity": -9.81,
+    "restitution": 0.6,
+    "friction": 0.5,
+    "linearDamping": 0.3,
+    "angularDamping": 0.4
+  },
+  "fileObject": {
+    "width": 0.08,
+    "height": 0.08,
+    "depth": 0.02
+  },
+  "contentObject": {
+    "width": 0.45,
+    "height": 0.30,
+    "depth": 0.02
+  },
+  "gestures": {
+    "tapMaxMs": 220,
+    "doubleTapMaxMs": 320,
+    "dragStartPx": 8,
+    "pinchStartPx": 6,
+    "maxScale": 3.0,
+    "minScale": 0.5
+  }
+}
