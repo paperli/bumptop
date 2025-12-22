@@ -14,7 +14,7 @@ export function ControlsHint() {
       <div className="controls-hint-item">🖱️ Right Click + Drag: Rotate camera</div>
       <div className="controls-hint-item">🖱️ Scroll: Zoom camera</div>
       <div className="controls-hint-note">
-        ✨ Try dragging and throwing files around!
+        ✨ Throw files at the walls to see them bounce!
       </div>
     </div>
   )

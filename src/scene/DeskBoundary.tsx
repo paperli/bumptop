@@ -18,7 +18,7 @@ export function DeskBoundary() {
   return (
     <group>
       {/* Desk plane (visual + physics) */}
-      <RigidBody type="fixed" colliders="cuboid">
+      <RigidBody type="fixed" colliders="cuboid" restitution={0.3} friction={0.4}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
           <planeGeometry args={[deskWidth, deskHeight]} />
           <meshStandardMaterial
@@ -37,29 +37,54 @@ export function DeskBoundary() {
       />
 
       {/* Invisible boundary walls (physics only) */}
+      {/* High restitution for bouncy, joyful collisions */}
       {/* North wall (positive Z) */}
-      <RigidBody type="fixed" colliders="cuboid" position={[0, wallHeight / 2, deskHeight / 2]}>
+      <RigidBody
+        type="fixed"
+        colliders="cuboid"
+        position={[0, wallHeight / 2, deskHeight / 2]}
+        restitution={0.9}
+        friction={0.1}
+      >
         <mesh visible={false}>
           <boxGeometry args={[deskWidth, wallHeight, wallThickness]} />
         </mesh>
       </RigidBody>
 
       {/* South wall (negative Z) */}
-      <RigidBody type="fixed" colliders="cuboid" position={[0, wallHeight / 2, -deskHeight / 2]}>
+      <RigidBody
+        type="fixed"
+        colliders="cuboid"
+        position={[0, wallHeight / 2, -deskHeight / 2]}
+        restitution={0.9}
+        friction={0.1}
+      >
         <mesh visible={false}>
           <boxGeometry args={[deskWidth, wallHeight, wallThickness]} />
         </mesh>
       </RigidBody>
 
       {/* East wall (positive X) */}
-      <RigidBody type="fixed" colliders="cuboid" position={[deskWidth / 2, wallHeight / 2, 0]}>
+      <RigidBody
+        type="fixed"
+        colliders="cuboid"
+        position={[deskWidth / 2, wallHeight / 2, 0]}
+        restitution={0.9}
+        friction={0.1}
+      >
         <mesh visible={false}>
           <boxGeometry args={[wallThickness, wallHeight, deskHeight]} />
         </mesh>
       </RigidBody>
 
       {/* West wall (negative X) */}
-      <RigidBody type="fixed" colliders="cuboid" position={[-deskWidth / 2, wallHeight / 2, 0]}>
+      <RigidBody
+        type="fixed"
+        colliders="cuboid"
+        position={[-deskWidth / 2, wallHeight / 2, 0]}
+        restitution={0.9}
+        friction={0.1}
+      >
         <mesh visible={false}>
           <boxGeometry args={[wallThickness, wallHeight, deskHeight]} />
         </mesh>
