@@ -111,9 +111,11 @@ export function ContentObject({ content, onRefReady }: ContentObjectProps) {
       angularDamping={settings.angularDamping}
       lockRotations={true} // Keep panels upright
       gravityScale={0} // Float in air
+      mass={2.0} // Heavier than file objects for strong collisions
+      ccd={true} // Enable CCD to prevent tunneling at high speeds
     >
-      {/* Explicit collider with panel dimensions */}
-      <CuboidCollider args={[panelWidth / 2, panelHeight / 2, 0.01]} />
+      {/* Explicit collider with substantial depth for reliable collisions */}
+      <CuboidCollider args={[panelWidth / 2, panelHeight / 2, 0.03]} />
 
       <group>
         {/* Invisible hit area mesh for gesture detection - CRITICAL for pointer events */}
