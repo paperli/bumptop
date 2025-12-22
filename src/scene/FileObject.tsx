@@ -7,11 +7,11 @@
 import { useRef, useState, Suspense } from 'react'
 import { RigidBody, RapierRigidBody } from '@react-three/rapier'
 import { Text, useTexture } from '@react-three/drei'
-import { ThreeEvent } from '@react-three/fiber'
 import { FileEntry } from '../types'
 import { useAppStore } from '../store/appStore'
 import { useFileStore } from '../store/fileStore'
 import { getPhysicsMaterial, getDampingConfig } from '../utils/physicsConfig'
+import { useGestures } from '../hooks/useGestures'
 
 interface FileObjectProps {
   file: FileEntry
@@ -34,18 +34,20 @@ export function FileObject({ file, position }: FileObjectProps) {
   // File object size (8cm from PRD)
   const FILE_SIZE = 0.08
 
-  const handleClick = (event: ThreeEvent<MouseEvent>) => {
-    event.stopPropagation()
-
-    // Single click: toggle selection
-    if (isSelected) {
-      deselectFile(file.id)
-      console.log(`Deselected: ${file.name}`)
-    } else {
+  // Gesture handlers for drag, throw, select
+  const { gestureHandlers } = useGestures({
+    rigidBodyRef,
+    onSelect: () => {
       selectFile(file.id)
       console.log(`Selected: ${file.name}`)
-    }
-  }
+    },
+    onDeselect: () => {
+      deselectFile(file.id)
+      console.log(`Deselected: ${file.name}`)
+    },
+    minThrowSpeed: 0.1,
+    maxThrowSpeed: 3.0, // Lower max speed to keep files within boundaries
+  })
 
   // Color based on selection and hover state
   const getColor = () => {
@@ -71,7 +73,7 @@ export function FileObject({ file, position }: FileObjectProps) {
         <mesh
           castShadow
           receiveShadow
-          onClick={handleClick}
+          {...gestureHandlers}
           onPointerOver={() => setIsHovered(true)}
           onPointerOut={() => setIsHovered(false)}
         >
