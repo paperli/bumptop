@@ -58,6 +58,7 @@ export function FileObject({ file, position }: FileObjectProps) {
       linearDamping={damping.linear}
       angularDamping={damping.angular}
       ccd={true}
+      collisionGroups={0xFFFF0003} // Default: collide with boundaries and other files
     >
       <group>
         {/* File box with thumbnail on top */}
