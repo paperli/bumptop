@@ -6,7 +6,7 @@
 import { useRef, useCallback } from 'react'
 import { ThreeEvent } from '@react-three/fiber'
 import { RapierRigidBody } from '@react-three/rapier'
-import { Vector3 } from 'three'
+import { Vector3, Plane, Raycaster } from 'three'
 import { GestureInterpreter } from '../input/GestureInterpreter'
 import { PointerVelocityTracker } from '../input/PointerVelocityTracker'
 import { useFileStore } from '../store/fileStore'
@@ -95,9 +95,27 @@ export function useGestures(options: UseGesturesOptions) {
 
       // Always update position and track velocity while pointer is down
       if (rigidBodyRef.current) {
-        // Get world position from pointer
-        const worldPos = event.point
         const currentPos = rigidBodyRef.current.translation()
+
+        // CRITICAL FIX: Raycast to a horizontal plane at the file's current Y height
+        // instead of using event.point (which hits the file mesh at varying angles)
+        const dragPlane = new Plane(new Vector3(0, 1, 0), -currentPos.y) // Horizontal plane at current Y
+        const raycaster = new Raycaster()
+        raycaster.setFromCamera(
+          {
+            x: (event.nativeEvent.clientX / window.innerWidth) * 2 - 1,
+            y: -(event.nativeEvent.clientY / window.innerHeight) * 2 + 1,
+          },
+          event.camera
+        )
+
+        const intersectionPoint = new Vector3()
+        const didIntersect = raycaster.ray.intersectPlane(dragPlane, intersectionPoint)
+
+        if (!didIntersect) {
+          // Ray doesn't intersect plane (very rare), skip this frame
+          return
+        }
 
         // Check if we've moved enough to start dragging (8px threshold)
         const isDragging = gestureInterpreter.current.isDraggingGesture()
@@ -109,8 +127,8 @@ export function useGestures(options: UseGesturesOptions) {
             isDraggingStartedRef.current = true
           }
 
-          // Update target position (XZ plane only, lock Y to current height)
-          targetPosition.current = new Vector3(worldPos.x, currentPos.y, worldPos.z)
+          // Update target position (use intersection with drag plane)
+          targetPosition.current = new Vector3(intersectionPoint.x, currentPos.y, intersectionPoint.z)
 
           // Smooth interpolation (lerp) between current and target position
           // lerp factor: 0 = no movement, 1 = instant snap
@@ -129,6 +147,14 @@ export function useGestures(options: UseGesturesOptions) {
           const objectPos = rigidBodyRef.current.translation()
           const trackingPos = new Vector3(objectPos.x, 0, objectPos.z)
           velocityTracker.current.addSample(trackingPos)
+
+          // Debug: Log position every 10 frames
+          if (velocityTracker.current.getSampleCount() % 10 === 0) {
+            console.log(
+              `[Drag] Pos: [${objectPos.x.toFixed(2)}, ${objectPos.z.toFixed(2)}], ` +
+                `Target: [${intersectionPoint.x.toFixed(2)}, ${intersectionPoint.z.toFixed(2)}]`
+            )
+          }
         }
       }
     },
@@ -183,7 +209,18 @@ export function useGestures(options: UseGesturesOptions) {
             velocity.y = 0
             const speed = velocity.length()
 
-            console.log(`[Throw] Raw velocity: x=${velocity.x.toFixed(3)}, z=${velocity.z.toFixed(3)}, speed=${speed.toFixed(3)} m/s`)
+            // Determine direction description for debugging
+            let direction = ''
+            if (Math.abs(velocity.x) > Math.abs(velocity.z)) {
+              direction = velocity.x > 0 ? '+X (right)' : '-X (left)'
+            } else {
+              direction = velocity.z > 0 ? '+Z (away from camera)' : '-Z (toward camera)'
+            }
+
+            console.log(
+              `[Throw] Raw velocity: x=${velocity.x.toFixed(3)}, z=${velocity.z.toFixed(3)}, ` +
+                `speed=${speed.toFixed(3)} m/s, direction=${direction}`
+            )
 
             // Only apply impulse if speed is above minimum
             if (speed > minThrowSpeed) {
@@ -204,7 +241,10 @@ export function useGestures(options: UseGesturesOptions) {
                 true
               )
 
-              console.log(`[Throw] ✓ Impulse applied: [${impulse.x.toFixed(3)}, 0, ${impulse.z.toFixed(3)}], speed=${clampedSpeed.toFixed(3)} m/s`)
+              console.log(
+                `[Throw] ✓ Impulse applied: [${impulse.x.toFixed(3)}, 0, ${impulse.z.toFixed(3)}], ` +
+                  `speed=${clampedSpeed.toFixed(3)} m/s`
+              )
             } else {
               console.log(`[Throw] ✗ Speed too low: ${speed.toFixed(3)} < ${minThrowSpeed} m/s`)
             }
